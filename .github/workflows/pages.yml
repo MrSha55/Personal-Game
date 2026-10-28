@@ -1,0 +1,35 @@
+# 推送到 main 就自动部署到 GitHub Pages（仓库 Settings → Pages → Source 要选 "GitHub Actions"）
+name: 部署到 GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      # 游戏页按 Artifact 的写法没有 doctype（claude.ai 发布时会补外壳），这里补上，免得浏览器进怪异模式。
+      # 只发布游戏要用的文件，Tripo 原始 glb、原图这些留在仓库里不上网站。
+      - name: 组装网站
+        run: |
+          mkdir -p _site/assets
+          { echo '<!doctype html>'; echo '<html lang="zh-CN">'; cat meme-fight.html; } > _site/index.html
+          cp assets/husky.json assets/penguin.json assets/anims_*.json assets/*.jpg assets/*_card.webp _site/assets/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+      - id: deployment
+        uses: actions/deploy-pages@v4

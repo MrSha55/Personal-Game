@@ -1,0 +1,985 @@
+<meta charset="utf-8">
+<title>表情包大乱斗</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 美漫风：黑粗描边 + 错位实心投影 + 网点（Ben-Day dots）+ 红黄蓝高饱和。擂台画面本身是亮的漫画背景，所以 UI 一律"白底/黄底 + 黑框"保证对比 */
+:root{
+  --ink:#121014; --card:#ffffff; --fg:#121014; --muted:#5b5348;
+  --p1:#e8262b; --p2:#1d6fe0; --hp:#ffd60a; --hp-drain:#ff7a1a; --hp-lost:#5a1a1f;
+  --dots:radial-gradient(circle,rgba(18,16,20,.16) 1.4px,transparent 1.6px) 0 0/9px 9px;
+  --display:"Bangers","ZCOOL KuaiLe","PingFang SC","Microsoft YaHei",sans-serif;
+  --cn:"ZCOOL KuaiLe","PingFang SC","Microsoft YaHei",sans-serif;
+  --body:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --drop:4px 4px 0 var(--ink);
+  color-scheme:light;
+}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--hp);color:var(--fg);font-family:var(--body);overflow:hidden}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block}
+.inked{-webkit-text-stroke:3px var(--ink);paint-order:stroke fill}
+
+#hud{position:fixed;top:0;left:0;right:0;display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:start;pointer-events:none;
+  padding-top:calc(14px + env(safe-area-inset-top,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.side{display:grid;gap:8px;min-width:0;justify-items:start}
+.side.r{justify-items:end;text-align:right}
+.name{font-family:var(--display);font-size:clamp(16px,2.4vw,26px);letter-spacing:.06em;background:var(--hp);border:3px solid var(--ink);box-shadow:var(--drop);padding:0 12px;transform:skewX(-10deg)}
+.side.r .name{transform:skewX(10deg)}
+.name small{font-family:var(--body);font-size:11px;background:var(--ink);color:var(--hp);padding:0 5px;margin-inline:6px;vertical-align:3px}
+.bar{width:100%;height:22px;background:var(--hp-lost);border:3px solid var(--ink);box-shadow:var(--drop);position:relative;overflow:hidden;transform:skewX(-14deg)}
+.side.r .bar{transform:skewX(14deg)}
+.bar i,.bar u{position:absolute;inset:0;transform-origin:left}
+.bar i{background:var(--hp);transition:transform .08s}
+.bar u{background:var(--hp-drain);transition:transform .5s ease-in .45s}
+.side.r .bar i,.side.r .bar u{transform-origin:right}
+.pips{display:flex;gap:6px}
+.pips b{width:12px;height:12px;border-radius:50%;border:3px solid var(--ink);background:#fff}
+.pips b.on{background:var(--p1)}
+.side.r .pips b.on{background:var(--p2)}
+.combo{font-family:var(--display);font-size:clamp(24px,3.6vw,42px);letter-spacing:.04em;color:var(--hp);min-height:1.3em;text-shadow:4px 4px 0 var(--p1)}
+.side.r .combo{text-shadow:-4px 4px 0 var(--p2)}
+#timer{font-family:var(--display);font-size:clamp(28px,4.6vw,42px);width:1.9em;height:1.9em;display:grid;place-items:center;background:#fff;border:4px solid var(--ink);border-radius:50%;box-shadow:var(--drop);font-variant-numeric:tabular-nums;line-height:1}
+#banner{position:fixed;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;pointer-events:none;text-align:center}
+#banner b{font-family:var(--display);font-weight:400;font-size:clamp(48px,11vw,132px);letter-spacing:.04em;color:var(--hp);-webkit-text-stroke:5px var(--ink);paint-order:stroke fill;text-shadow:7px 7px 0 var(--p1);transform:rotate(-4deg)}
+#banner span{font-family:var(--cn);font-size:18px;background:#fff;border:3px solid var(--ink);box-shadow:var(--drop);padding:2px 12px}
+#banner span:empty{display:none}
+#hint{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(560px,calc(100% - 440px));text-align:center;font-size:12px;pointer-events:none;background:#fff;border:2px solid var(--ink);padding:3px 10px}
+@media (max-width:1100px){#hint{display:none!important}}
+
+/* 拟声词气泡：在命中位置弹出 */
+.pow{position:fixed;left:0;top:0;width:118px;height:88px;margin:-44px 0 0 -59px;display:grid;place-items:center;pointer-events:none;
+  animation:pow .75s cubic-bezier(.2,1.5,.4,1) forwards}
+.pow svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.pow polygon{fill:var(--hp);stroke:var(--ink);stroke-width:5;stroke-linejoin:round}
+.pow b{position:relative;font-family:var(--display);font-weight:400;font-size:30px;letter-spacing:.03em;color:var(--p1);-webkit-text-stroke:2.5px var(--ink);paint-order:stroke fill;transform:rotate(-8deg)}
+.pow.big{width:160px;height:120px;margin:-60px 0 0 -80px}
+.pow.big b{font-size:44px}
+.pow.block polygon{fill:#fff}
+.pow.block b{color:var(--p2);font-size:24px}
+@keyframes pow{0%{transform:translate(var(--x),var(--y)) scale(.2) rotate(-14deg)}22%{transform:translate(var(--x),var(--y)) scale(1.12) rotate(5deg)}70%{opacity:1}100%{opacity:0;transform:translate(var(--x),calc(var(--y) - 24px)) scale(1)}}
+@keyframes powfade{0%,60%{opacity:1;transform:translate(var(--x),var(--y))}100%{opacity:0;transform:translate(var(--x),var(--y))}}
+@media (prefers-reduced-motion:reduce){.pow{animation:powfade .75s forwards}}
+
+/* 侧边按钮：左手方向，右手出招。手机能点，电脑上按键盘时也会跟着亮 */
+#pad{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none;
+  padding:0 max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+#pad button{pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+  display:grid;place-content:center;gap:1px;padding:0;background:#fff;border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font-family:var(--cn);font-size:17px;line-height:1.05;color:var(--ink)}
+#pad button small{font-family:var(--body);font-size:10px;color:var(--muted)}
+#pad button[data-on]{transform:translate(3px,3px);box-shadow:none;background:var(--hp);color:var(--ink)}
+#pad button[data-on] small{color:var(--ink)}
+.dpad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(2,56px);gap:6px}
+.dpad button{border-radius:12px}
+.dpad .up{grid-column:2}.dpad .left{grid-column:1;grid-row:2}.dpad .down{grid-column:2;grid-row:2}.dpad .right{grid-column:3;grid-row:2}
+.acts{display:grid;grid-template-columns:repeat(2,74px);grid-template-rows:56px 74px;gap:10px 12px}
+.acts button{border-radius:50%}
+#pad .acts .guard{grid-column:1/3;justify-self:center;width:100px;border-radius:28px}
+#pad .acts .lp{background:var(--p1);color:#fff}
+#pad .acts .hp{background:var(--p2);color:#fff}
+#pad .acts .lp small,#pad .acts .hp small{color:#fff}
+#pad .acts button[data-on]{background:var(--hp);color:var(--ink)}
+@media (max-width:480px){.dpad{grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px)}.acts{grid-template-columns:repeat(2,64px);grid-template-rows:48px 64px}}
+
+/* 选人界面 */
+#select{position:fixed;inset:0;background:var(--dots),var(--hp);overflow:auto;display:grid;align-content:center;justify-items:center;gap:22px;
+  padding-block:32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#select h1{margin:0;font-family:var(--cn);font-weight:400;font-size:clamp(44px,9vw,92px);color:#fff;-webkit-text-stroke:8px var(--ink);paint-order:stroke fill;text-shadow:8px 8px 0 var(--p1);text-wrap:balance;text-align:center;transform:rotate(-2deg)}
+#select .sub{margin:0;background:#fff;border:3px solid var(--ink);box-shadow:var(--drop);padding:4px 14px;text-align:center}
+.cards{display:grid;grid-template-columns:repeat(5,minmax(0,176px));gap:16px;width:100%;justify-content:center}
+@media (max-width:1000px){.cards{grid-template-columns:repeat(3,minmax(0,200px))}}
+@media (max-width:640px){.cards{grid-template-columns:repeat(2,minmax(0,220px))}}
+.card{background:var(--card);border:4px solid var(--ink);box-shadow:6px 6px 0 var(--ink);padding:14px;display:grid;gap:8px;justify-items:center;min-width:0}
+.card[data-p1]{box-shadow:6px 6px 0 var(--p1);border-color:var(--p1)}
+.card[data-p2]{outline:5px solid var(--p2);outline-offset:3px}
+.card img{width:104px;height:104px;object-fit:contain}
+.card h2{margin:0;font-family:var(--cn);font-weight:400;font-size:26px}
+.card p{margin:0;color:var(--muted);font-size:13px;text-align:center}
+.stat{display:grid;grid-template-columns:3em 1fr;gap:8px;align-items:center;width:100%;font-size:12px;color:var(--muted)}
+.stat span{height:8px;background:#eee;border:2px solid var(--ink)}
+.stat span i{display:block;height:100%;background:var(--p1)}
+.picks{display:flex;gap:8px}
+button{font:inherit;color:var(--ink);background:#fff;border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:5px 14px;cursor:pointer}
+button:active{transform:translate(3px,3px);box-shadow:none}
+button:focus-visible,input:focus-visible{outline:3px solid var(--p2);outline-offset:3px}
+.pick1[aria-pressed=true]{background:var(--p1);color:#fff}
+.pick2[aria-pressed=true]{background:var(--p2);color:#fff}
+.row{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:center}
+.row label{background:#fff;border:3px solid var(--ink);padding:5px 12px}
+#go{font-family:var(--display);font-size:34px;letter-spacing:.06em;padding:4px 44px;background:var(--p1);color:#fff;box-shadow:5px 5px 0 var(--ink)}
+.msg{margin:0;max-width:560px;background:#fff;border:3px solid var(--p1);box-shadow:var(--drop);padding:6px 14px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px;color:var(--muted);max-width:560px;background:#fff;border:3px solid var(--ink);padding:10px 14px}
+.keys b{color:var(--fg);font-weight:700}
+kbd{font-family:var(--body);border:2px solid var(--ink);padding:0 5px;color:var(--fg);background:#fff}
+</style>
+
+<div id="stage"></div>
+
+<div id="hud" hidden>
+  <div class="side"><div class="name" id="n0"></div><div class="bar"><u id="lag0"></u><i id="hp0"></i></div><div class="pips" id="w0"><b></b><b></b></div><div class="combo inked" id="c0"></div></div>
+  <div id="timer">60</div>
+  <div class="side r"><div class="name" id="n1"></div><div class="bar"><u id="lag1"></u><i id="hp1"></i></div><div class="pips" id="w1"><b></b><b></b></div><div class="combo inked" id="c1"></div></div>
+</div>
+<div id="banner"><b id="bannerMain"></b><span id="bannerSub"></span></div>
+<div id="hint" hidden>按住「后退」或「防」防御 · 下蹲躲轻拳 · 轻拳打中马上接重脚 · <kbd>Esc</kbd> 回选人</div>
+<div id="pad" hidden aria-label="1P 操作按钮">
+  <div class="dpad">
+    <button class="up" data-bit="4">跳<small>W</small></button>
+    <button class="left" data-bit="1" aria-label="向左">◀<small>A</small></button>
+    <button class="down" data-bit="8">蹲<small>S</small></button>
+    <button class="right" data-bit="2" aria-label="向右">▶<small>D</small></button>
+  </div>
+  <div class="acts">
+    <button class="guard" data-bit="0">防<small>按住</small></button>
+    <button class="lp" data-bit="16">轻拳<small>J</small></button>
+    <button class="hp" data-bit="32">重脚<small>K</small></button>
+  </div>
+</div>
+
+<div id="select">
+  <h1>表情包大乱斗</h1>
+  <p class="sub">每个角色点一下 1P / 2P，红框是 1P，蓝框是 2P</p>
+  <div class="cards" id="cards"></div>
+  <div class="row">
+    <label><input type="checkbox" id="cpu" checked> 2P 交给电脑</label>
+    <button id="go">FIGHT!</button>
+  </div>
+  <p id="loadMsg" class="msg" role="status" hidden></p>
+  <div class="keys">
+    <b>1P</b><span><kbd>A</kbd><kbd>D</kbd> 移动 · <kbd>W</kbd> 跳 · <kbd>S</kbd> 蹲 · <kbd>J</kbd> 轻拳 · <kbd>K</kbd> 重脚，也可以点屏幕两侧的按钮</span>
+    <b>2P</b><span>方向键 · <kbd>小键盘1</kbd>/<kbd>.</kbd> 轻拳 · <kbd>小键盘2</kbd>/<kbd>/</kbd> 重脚</span>
+    <b>连段</b><span>轻拳打中后马上按轻拳或重脚可以接上，例如 <kbd>J</kbd><kbd>J</kbd><kbd>K</kbd>。</span>
+    <b>说明</b><span>三局两胜，每局 60 秒，有音效。手机上用两侧按钮操作 1P。</span>
+  </div>
+</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
+
+// 字体异步加载，没到之前先用系统字体，到了再重画背景标题
+const fontsReady = new Promise(res => {
+  const l = Object.assign(document.createElement('link'), { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Bangers&family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@400;700&display=swap' });
+  l.onload = l.onerror = res; document.head.append(l);
+}).then(() => Promise.all([document.fonts.load('80px "ZCOOL KuaiLe"', '表情包大乱斗'), document.fonts.load('40px Bangers', 'POW')])).catch(() => {});
+
+// ============ 模拟层（纯数据 + 定帧 60Hz，不碰 three.js）============
+// 联机要点：step(state, [p1按键, p2按键]) 只用输入推进，不读时间、不用随机数，
+// 所以两端喂同样的输入就得到同样的结果；state 是纯 JSON，structuredClone 一下就是回滚快照。
+const L = 1, R = 2, U = 4, D = 8, A = 16, B = 32;
+const STAGE_HALF = 6.5, GRAV = 0.014, ROUND_FRAMES = 60 * 60, WIN_ROUNDS = 2, BODY_W = 0.7, BUFFER = 8;
+
+const CHARS = [
+  { name: '大魔王', tag: '冷静的中单，什么都会一点', speed: 1.0, power: 1.0, body: 0xd7263d, leg: 0x1b1a22, skin: 0xf3cfb0, extra: 'headphones', face: faceDemon },
+  { name: '哈基米', tag: '腿短手快，哈气连打', speed: 1.25, power: 0.85, body: 0xf4a340, leg: 0xfff1df, skin: 0xfff1df, extra: 'cat', face: faceCat },
+  { name: '神烦狗', tag: 'such power, very slow, wow', speed: 0.85, power: 1.25, body: 0xe3b46b, leg: 0xe3b46b, skin: 0xfff3dc, extra: 'dog', face: faceDoge },
+  { name: '哈士奇', tag: '嗷呜一声，拳脚都会', speed: 1.05, power: 1.05, model: 'husky', img: 'assets/husky_card.webp' },
+  { name: '小企鹅', tag: '毛线帽一戴，扑腾就是干', speed: 1.15, power: 0.9, model: 'penguin', img: 'assets/penguin_card.webp' },
+];
+
+// 帧数据。box = [前方偏移, 离地高度, 宽, 高]，相对角色脚底；stop = 命中后全场定格帧数
+const MOVES = {
+  lp:  { startup: 4,  active: 3,  recovery: 9,  dmg: 6,  hitstun: 15, blockstun: 9,  push: 0.06, stop: 6,  box: [0.6, 1.3, 0.7, 0.35] },
+  hp:  { startup: 10, active: 4,  recovery: 18, dmg: 13, hitstun: 22, blockstun: 13, push: 0.20, stop: 11, box: [0.7, 0.6, 0.8, 0.45] },
+  air: { startup: 5,  active: 10, recovery: 6,  dmg: 8,  hitstun: 16, blockstun: 10, push: 0.12, stop: 7,  box: [0.5, 0.1, 0.7, 0.6] },
+};
+
+function newFighter(ch, side) {
+  return { ch, x: side ? 2.5 : -2.5, y: 0, vx: 0, vy: 0, facing: side ? -1 : 1, hp: 100,
+           act: 'idle', frame: 0, move: null, hitDone: false, stun: 0, prev: 0, inp: 0, buf: 0, bufT: 0, combo: 0 };
+}
+function newRound(s) {
+  s.f = s.chars.map(newFighter);
+  s.timer = ROUND_FRAMES; s.phase = 'ready'; s.phaseT = 90; s.hitstop = 0; s.koWinner = -1;
+}
+function newMatch(chars) {
+  const s = { chars, wins: [0, 0], round: 1, fx: [], frame: 0 };
+  newRound(s);
+  return s;
+}
+
+function setAct(f, a) { if (f.act !== a) { f.act = a; f.frame = 0; } }
+const clampX = f => { f.x = Math.max(-STAGE_HALF, Math.min(STAGE_HALF, f.x)); };
+
+// 输入缓冲：提前几帧按的攻击键会在能动的第一帧放出来，手感不"吞键"。
+// 定格（hitstop）期间也要记录按键、但不倒计时，连段就是在定格里按的。
+function readInput(f, inp, tick) {
+  const press = inp & ~f.prev;
+  f.prev = f.inp = inp;
+  if (press & (A | B)) { f.buf = press & (A | B); f.bufT = BUFFER; }
+  else if (tick && f.bufT > 0 && --f.bufT === 0) f.buf = 0;
+}
+
+function control(s, f, inp) {
+  readInput(f, inp, true);
+  f.frame++;
+  const c = CHARS[f.ch], ground = f.y <= 0;
+  if (f.act === 'ko') return;
+  if (f.act === 'hit' || f.act === 'block') {
+    if (f.frame < f.stun) return;
+    f.act = 'idle'; f.frame = 0;
+  }
+  let cancel = false;
+  if (f.act === 'attack') {
+    const m = MOVES[f.move];
+    cancel = f.move === 'lp' && f.hitDone && f.buf > 0; // 轻拳命中可取消 = 连段
+    if (!cancel && f.frame < m.startup + m.active + m.recovery) return;
+    if (!cancel) { f.act = ground ? 'idle' : 'jump'; f.frame = 0; }
+  }
+  if (f.buf) {
+    f.move = !ground ? 'air' : (f.buf & A) && !(cancel && f.buf & B) ? 'lp' : 'hp';
+    f.act = 'attack'; f.frame = 0; f.hitDone = false; f.buf = f.bufT = 0;
+    if (ground) f.vx = 0;
+    s.fx.push({ t: 'swing' });
+    return;
+  }
+  if (!ground) return;
+  const h = (inp & R ? 1 : 0) - (inp & L ? 1 : 0);
+  if (inp & U) { setAct(f, 'jump'); f.vy = 0.25; f.vx = h * 0.075 * c.speed; }
+  else if (inp & D) { setAct(f, 'crouch'); f.vx = 0; }
+  else if (h) { setAct(f, 'walk'); f.vx = h * (h === f.facing ? 0.065 : 0.045) * c.speed; }
+  else { setAct(f, 'idle'); f.vx = 0; }
+}
+
+function physics(f) {
+  if (f.act === 'hit' || f.act === 'block' || (f.act === 'ko' && f.y === 0)) f.vx *= 0.85;
+  f.x += f.vx;
+  if (f.y > 0 || f.vy > 0) {
+    f.vy -= GRAV; f.y += f.vy;
+    if (f.y <= 0) {
+      f.y = 0; f.vy = 0;
+      if (f.act === 'jump' || (f.act === 'attack' && f.move === 'air')) setAct(f, 'idle');
+    }
+  }
+  clampX(f);
+}
+
+function separate(a, b) {
+  if (Math.abs(a.y - b.y) > 1.4) return;
+  let o = BODY_W - Math.abs(b.x - a.x);
+  if (o <= 0) return;
+  const d = b.x > a.x ? 1 : b.x < a.x ? -1 : a.facing;
+  a.x -= d * o / 2; b.x += d * o / 2; clampX(a); clampX(b);
+  o = BODY_W - Math.abs(b.x - a.x);
+  if (o > 0) { if (Math.abs(a.x) >= STAGE_HALF) b.x += d * o; else a.x -= d * o; }
+}
+
+function hits(att, def) {
+  if (att.act !== 'attack' || att.hitDone || def.act === 'ko') return null;
+  const m = MOVES[att.move], t = att.frame;
+  if (t <= m.startup || t > m.startup + m.active) return null;
+  const [ox, oy, w, h] = m.box, cx = att.x + att.facing * ox;
+  const low = def.y === 0 && (def.act === 'crouch' || (def.act === 'block' && def.inp & D));
+  const top = def.y + (low ? 1.3 : 2.0), y0 = att.y + oy;
+  return Math.abs(cx - def.x) < w / 2 + 0.38 && y0 < top && y0 + h > def.y ? m : null;
+}
+
+function applyHit(s, att, def, m) {
+  att.hitDone = true;
+  const away = def.x >= att.x ? R : L;
+  const blocking = def.y === 0 && ['idle', 'walk', 'crouch', 'block'].includes(def.act) && (def.inp & away);
+  const fx = { who: s.f.indexOf(def), dir: att.facing, x: def.x - att.facing * 0.3, y: att.y + m.box[1] + m.box[3] / 2, big: m === MOVES.hp };
+  def.frame = 0;
+  if (blocking) {
+    def.act = 'block'; def.stun = m.blockstun; def.vx = att.facing * m.push * 0.8;
+    s.hitstop = 4; s.fx.push({ t: 'block', ...fx });
+    return;
+  }
+  def.combo = def.act === 'hit' ? def.combo + 1 : 1;
+  def.hp = Math.max(0, def.hp - Math.round(m.dmg * CHARS[att.ch].power));
+  def.act = 'hit'; def.stun = m.hitstun; def.vx = att.facing * m.push;
+  if (def.y > 0) def.vy = 0.12;
+  if (def.hp === 0) { def.act = 'ko'; def.vy = 0.22; def.vx = att.facing * 0.14; }
+  s.hitstop = def.hp === 0 ? 20 : m.stop;
+  s.fx.push({ t: 'hit', ko: def.hp === 0, ...fx });
+}
+
+function finishRound(s, winner) {
+  s.phase = 'ko'; s.phaseT = 150; s.koWinner = winner;
+  if (winner >= 0) s.wins[winner]++;
+}
+
+function step(s, inputs) {
+  s.fx.length = 0; s.frame++;
+  if (s.phase !== 'fight') inputs = [0, 0];
+  if (s.hitstop > 0) { s.hitstop--; s.f.forEach((f, i) => readInput(f, inputs[i], false)); return; }
+  if (s.phase === 'ready' && --s.phaseT <= 0) s.phase = 'fight';
+  else if (s.phase === 'ko' && --s.phaseT <= 0) {
+    if (Math.max(...s.wins) >= WIN_ROUNDS) s.phase = 'over';
+    else { s.round++; newRound(s); return; }
+  }
+  else if (s.phase === 'fight' && --s.timer <= 0) {
+    const [p, q] = s.f;
+    finishRound(s, p.hp === q.hp ? -1 : p.hp > q.hp ? 0 : 1);
+  }
+  const [a, b] = s.f;
+  control(s, a, inputs[0]); control(s, b, inputs[1]);
+  physics(a); physics(b);
+  for (const [f, o] of [[a, b], [b, a]])
+    if (f.y === 0 && ['idle', 'walk', 'crouch'].includes(f.act)) f.facing = o.x > f.x ? 1 : o.x < f.x ? -1 : f.facing;
+  separate(a, b);
+  const ha = hits(a, b), hb = hits(b, a); // 先都判定再结算，互殴时双方都吃到
+  if (ha) applyHit(s, a, b, ha);
+  if (hb) applyHit(s, b, a, hb);
+  if (s.phase === 'fight' && (a.hp === 0 || b.hp === 0))
+    finishRound(s, a.hp === 0 && b.hp === 0 ? -1 : a.hp === 0 ? 1 : 0);
+}
+
+// ============ 输入层（键盘 / 电脑；以后联机就是把远端输入塞进这里）============
+const keys = new Set();
+const KEYMAP = [
+  { KeyA: L, KeyD: R, KeyW: U, KeyS: D, KeyJ: A, KeyK: B },
+  { ArrowLeft: L, ArrowRight: R, ArrowUp: U, ArrowDown: D, Numpad1: A, Period: A, Numpad2: B, Slash: B },
+];
+addEventListener('keydown', e => {
+  if (KEYMAP[1][e.code] || e.code === 'Space') e.preventDefault();
+  keys.add(e.code);
+  if (e.code === 'Escape' && state) backToSelect();
+  if (e.code === 'Enter' && state?.phase === 'over') startMatch();
+});
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
+const readKeys = p => { let k = 0; for (const c of keys) k |= KEYMAP[p][c] || 0; return k; };
+
+// 侧边按钮只管 1P。data-bit 就是按键位；"防"是 0，按住时换算成"远离对手"那个方向
+let padBits = 0, padTap = 0, padGuard = false; // padTap：按下过就至少算一帧，点得再快也不吞
+const padBtns = [...document.querySelectorAll('#pad button')];
+for (const b of padBtns) {
+  const bit = +b.dataset.bit;
+  const set = on => { if (bit) padBits = on ? padBits | bit : padBits & ~bit; else padGuard = on; };
+  b.addEventListener('pointerdown', e => { e.preventDefault(); b.setPointerCapture(e.pointerId); set(true); padTap |= bit; });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, () => set(false));
+  b.addEventListener('contextmenu', e => e.preventDefault());
+}
+addEventListener('blur', () => { padBits = 0; padGuard = false; });
+function input1P(s) {
+  const [me, o] = s.f, k = readKeys(0) | padBits | padTap | (padGuard ? (me.x >= o.x ? R : L) : 0);
+  padTap = 0;
+  return k;
+}
+
+const ai = { t: 0, k: 0, guard: false };
+function cpu(s, me) {
+  const f = s.f[me], o = s.f[1 - me], dist = Math.abs(o.x - f.x);
+  const toward = o.x > f.x ? R : L, away = o.x > f.x ? L : R;
+  if (ai.guard && o.act === 'attack' && dist < 2) return away;
+  if (f.act === 'attack' && f.hitDone && f.move === 'lp' && Math.random() < 0.1) return B; // 偶尔连段
+  if (--ai.t > 0) return ai.k;
+  const r = Math.random();
+  ai.guard = Math.random() < 0.5; ai.t = 6 + (Math.random() * 14 | 0);
+  if (dist > 1.4) ai.k = r < 0.08 ? toward | U : toward;
+  else if (r < 0.35) { ai.k = A; ai.t = 3; }
+  else if (r < 0.55) { ai.k = B; ai.t = 3; }
+  else if (r < 0.75) ai.k = away;
+  else if (r < 0.85) ai.k = away | D;
+  else ai.k = 0;
+  return ai.k;
+}
+
+// ============ 音效（WebAudio 现场合成，不需要音频文件）============
+// [噪声时长, 滤波频率, 低频"咚"起始Hz, 音量]
+const SFX = { swing: [0.09, 900, 0, 0.12], block: [0.06, 4200, 320, 0.3], hit: [0.12, 2000, 170, 0.5], heavy: [0.22, 1300, 110, 0.75], ko: [0.6, 900, 70, 0.9] };
+let actx = null, noise = null;
+function initAudio() {
+  try {
+    actx ??= new AudioContext();
+    actx.resume();
+    if (!noise) {
+      noise = actx.createBuffer(1, actx.sampleRate, actx.sampleRate);
+      const d = noise.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+  } catch { actx = null; }
+}
+function sfx(kind) {
+  if (!actx) return;
+  const [dur, freq, thump, vol] = SFX[kind], t = actx.currentTime;
+  const g = actx.createGain(); g.connect(actx.destination);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur + 0.08);
+  const n = actx.createBufferSource(), flt = actx.createBiquadFilter();
+  n.buffer = noise; flt.type = kind === 'swing' ? 'bandpass' : 'lowpass'; flt.frequency.setValueAtTime(freq, t);
+  if (kind === 'swing') flt.frequency.exponentialRampToValueAtTime(3500, t + dur);
+  n.connect(flt).connect(g); n.start(t, Math.random()); n.stop(t + dur);
+  if (thump) {
+    const o = actx.createOscillator();
+    o.frequency.setValueAtTime(thump, t); o.frequency.exponentialRampToValueAtTime(thump * 0.35, t + dur);
+    o.connect(g); o.start(t); o.stop(t + dur + 0.08);
+  }
+}
+
+// ============ 表情包脸（canvas 画贴纸，模型和选人卡共用）============
+function sticker(draw, skin) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+  const x = cv.getContext('2d');
+  x.save(); x.beginPath(); x.arc(128, 128, 118, 0, Math.PI * 2); x.clip();
+  x.fillStyle = skin; x.fillRect(0, 0, 256, 256);
+  draw(x);
+  x.restore();
+  x.beginPath(); x.arc(128, 128, 118, 0, Math.PI * 2); x.lineWidth = 10; x.strokeStyle = '#ffffff'; x.stroke();
+  return cv;
+}
+function line(x, w, c, ...pts) {
+  x.beginPath(); x.lineWidth = w; x.strokeStyle = c; x.lineCap = 'round';
+  x.moveTo(pts[0], pts[1]);
+  for (let i = 2; i < pts.length; i += 4) x.quadraticCurveTo(pts[i], pts[i + 1], pts[i + 2], pts[i + 3]);
+  x.stroke();
+}
+function faceDemon(x) {
+  x.fillStyle = '#16131c';
+  x.beginPath(); x.ellipse(128, 30, 150, 80, 0, 0, Math.PI * 2); x.fill();
+  for (const bx of [70, 110, 150, 190]) { x.beginPath(); x.moveTo(bx - 26, 80); x.lineTo(bx + 18, 80); x.lineTo(bx - 6, 112); x.fill(); }
+  x.lineWidth = 7; x.strokeStyle = '#111';
+  x.beginPath(); x.roundRect(56, 114, 62, 42, 10); x.roundRect(138, 114, 62, 42, 10); x.stroke();
+  line(x, 6, '#111', 118, 130, 128, 124, 138, 130);
+  line(x, 6, '#2a2230', 72, 138, 87, 134, 102, 138);
+  line(x, 6, '#2a2230', 154, 138, 169, 134, 184, 138);
+  line(x, 5, '#7a3b3b', 104, 192, 134, 202, 160, 184);
+}
+function faceCat(x) {
+  x.fillStyle = '#d97f22';
+  for (const sx of [100, 128, 156]) { x.beginPath(); x.moveTo(sx - 10, 0); x.lineTo(sx + 10, 0); x.lineTo(sx, 52); x.fill(); }
+  for (const ex of [88, 168]) {
+    x.fillStyle = '#fff8e8'; x.beginPath(); x.arc(ex, 124, 28, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#1d1a22'; x.beginPath(); x.arc(ex, 128, 20, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#fff'; x.beginPath(); x.arc(ex - 7, 119, 7, 0, Math.PI * 2); x.fill();
+  }
+  x.fillStyle = 'rgba(255,110,140,.45)';
+  x.beginPath(); x.ellipse(62, 168, 18, 10, 0, 0, Math.PI * 2); x.ellipse(194, 168, 18, 10, 0, 0, Math.PI * 2); x.fill();
+  x.fillStyle = '#ff7a9a'; x.beginPath(); x.moveTo(118, 156); x.lineTo(138, 156); x.lineTo(128, 166); x.fill();
+  x.lineWidth = 5; x.strokeStyle = '#3a2618';
+  x.beginPath(); x.arc(116, 168, 12, 0, Math.PI); x.moveTo(152, 168); x.arc(140, 168, 12, 0, Math.PI); x.stroke();
+  for (const s of [-1, 1]) for (const dy of [-8, 6]) line(x, 3, '#3a2618', 128 + s * 50, 160 + dy, 128 + s * 80, 156 + dy * 1.5, 128 + s * 112, 156 + dy * 2.2);
+}
+function faceDoge(x) {
+  x.fillStyle = '#fff3dc'; x.beginPath(); x.ellipse(128, 186, 76, 60, 0, 0, Math.PI * 2); x.fill();
+  x.fillStyle = '#a8742f';
+  x.beginPath(); x.ellipse(80, 90, 12, 8, 0, 0, Math.PI * 2); x.ellipse(170, 90, 12, 8, 0, 0, Math.PI * 2); x.fill();
+  for (const ex of [84, 170]) {
+    x.fillStyle = '#fff'; x.beginPath(); x.ellipse(ex, 122, 26, 16, 0, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#1c140c'; x.beginPath(); x.arc(ex + 13, 122, 11, 0, Math.PI * 2); x.fill(); // 斜眼
+  }
+  x.fillStyle = '#1c140c'; x.beginPath(); x.ellipse(128, 160, 22, 14, 0, 0, Math.PI * 2); x.fill();
+  line(x, 5, '#1c140c', 128, 174, 128, 186, 104, 196);
+  line(x, 5, '#1c140c', 128, 186, 140, 194, 160, 190);
+}
+
+// ============ 渲染层（只读 state，把数据摆成 3D 画面）============
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+let pixelRatio = Math.min(devicePixelRatio, 1.25); // 高分屏全屏渲染 + 抗锯齿太吃显卡，封顶 1.25，掉帧时 frame() 里再自动往下降
+renderer.setPixelRatio(pixelRatio);
+renderer.shadowMap.enabled = true;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xffd60a);
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+camera.position.set(0, 2.2, 11);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a6a4a, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+sun.position.set(3, 9, 7); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 6, bottom: -2 });
+scene.add(sun);
+for (const [col, x] of [[0xe8262b, -8], [0x1d6fe0, 8]]) {
+  const rim = new THREE.DirectionalLight(col, 1.2); rim.position.set(x, 3, -4); scene.add(rim);
+}
+
+// 卡通渲染：三阶色块明暗 + 背面外扩的黑描边（inverted hull）
+const TOON = new THREE.DataTexture(new Uint8Array([80, 170, 255]), 3, 1, THREE.RedFormat);
+TOON.minFilter = TOON.magFilter = THREE.NearestFilter; TOON.needsUpdate = true;
+const toon = opts => new THREE.MeshToonMaterial({ gradientMap: TOON, ...opts });
+const INK = 0x121014;
+const OUTLINE_BOX = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
+const OUTLINE_SKIN = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
+OUTLINE_SKIN.onBeforeCompile = sh => { // 顶点沿法线往外推一点（在蒙皮之前推，跟着骨骼一起动）
+  sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed += normalize(normal) * 0.009;');
+};
+
+const canvasTex = (w, h, draw) => {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  draw(cv.getContext('2d'));
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+};
+const floorTex = canvasTex(256, 256, x => {
+  x.fillStyle = '#f3e3bd'; x.fillRect(0, 0, 256, 256);
+  x.fillStyle = 'rgba(232,38,43,.22)';
+  for (let y = 0; y < 256; y += 32) for (let i = 0; i < 256; i += 32) { x.beginPath(); x.arc(i + (y / 32 % 2) * 16, y, 6, 0, 7); x.fill(); }
+});
+floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping; floorTex.repeat.set(20, 8);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 16), toon({ map: floorTex }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+for (const z of [-2.2, 2.2]) { // 擂台前后两道黑边线
+  const edge = new THREE.Mesh(new THREE.PlaneGeometry(40, 0.09), new THREE.MeshBasicMaterial({ color: INK }));
+  edge.rotation.x = -Math.PI / 2; edge.position.set(0, 0.003, z); scene.add(edge);
+}
+
+{ // 背景：放射线 + 网点 + 漫画城市 + 标题
+  const drawWall = x => {
+    x.fillStyle = '#ffd60a'; x.fillRect(0, 0, 2048, 768);
+    x.fillStyle = '#ffb703';
+    for (let i = 0; i < 48; i += 2) { x.beginPath(); x.moveTo(1024, 760); x.arc(1024, 760, 2400, i / 48 * Math.PI * 2, (i + 1) / 48 * Math.PI * 2); x.fill(); }
+    x.fillStyle = 'rgba(232,38,43,.26)';
+    for (let y = 8; y < 768; y += 16) for (let i = 0; i < 2048; i += 16) { x.beginPath(); x.arc(i + (y / 16 % 2) * 8, y, 0.4 + 3.4 * y / 768, 0, 7); x.fill(); }
+    let seed = 7; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647; // 固定种子，每次画得一样
+    const cols = ['#1d6fe0', '#e8262b', '#ffffff', '#7b3fc4', '#16a37f'];
+    x.strokeStyle = '#121014'; x.lineJoin = 'round';
+    for (let bx = -30; bx < 2048;) {
+      const w = 90 + rnd() * 130, h = 170 + rnd() * 260, y = 768 - h;
+      x.fillStyle = cols[rnd() * cols.length | 0]; x.lineWidth = 8;
+      x.fillRect(bx, y, w, h + 10); x.strokeRect(bx, y, w, h + 10);
+      x.lineWidth = 3;
+      for (let wy = y + 22; wy < 740; wy += 36) for (let wx = bx + 16; wx < bx + w - 24; wx += 30)
+        if (rnd() < 0.55) { x.fillStyle = '#fff3a8'; x.fillRect(wx, wy, 14, 18); x.strokeRect(wx, wy, 14, 18); }
+      bx += w + 8;
+    }
+    x.font = '180px "ZCOOL KuaiLe", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillStyle = '#121014'; x.fillText('表情包大乱斗', 1040, 316);
+    x.lineWidth = 22; x.strokeText('表情包大乱斗', 1024, 300);
+    x.fillStyle = '#e8262b'; x.fillText('表情包大乱斗', 1024, 300);
+    x.lineWidth = 6; x.strokeStyle = '#fff'; x.strokeText('表情包大乱斗', 1024, 300);
+  };
+  const tex = canvasTex(2048, 768, drawWall);
+  fontsReady.then(() => { drawWall(tex.image.getContext('2d')); tex.needsUpdate = true; });
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(30, 11.25), new THREE.MeshBasicMaterial({ map: tex }));
+  wall.position.set(0, 5, -9); scene.add(wall);
+}
+
+const faces = CHARS.map(c => c.face && sticker(c.face, '#' + c.skin.toString(16).padStart(6, '0')));
+// Tripo 生成的动物角色。Tripo 自动绑的都是同一套人形骨骼（骨骼名一样），所以动作只给哈士奇买了一份，
+// 其他角色按骨骼名共用：只取各骨骼的旋转，胯部位移按胯高比例缩放（retargetClip）。
+// .json 由 glb2json.py 从 Tripo 的 glb 转出来（Artifact 不托管 .glb），动作包去掉了重复的模型。
+const ANIMALS = {
+  husky:   { file: 'assets/husky.json', tex: 'assets/husky.jpg', scale: 2.4 },
+  penguin: { file: 'assets/penguin.json', tex: 'assets/penguin.jpg', scale: 2.4 },
+};
+const CLIP_FILES = ['assets/anims_a.json', 'assets/anims_b.json'];
+// Artifact 页面只放行同目录文件的相对路径 fetch，data: / blob: 请求会被 CSP 静默拦掉，
+// 所以模型文件自己 fetch（顺便记下载进度），把 base64 的二进制拼回 glb，再交给 GLTFLoader.parse。
+const gltfs = {}, loadBytes = {};
+async function fetchGlb(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url} 下载失败（HTTP ${res.status}）`);
+  const total = +res.headers.get('content-length') || 0, reader = res.body.getReader(), parts = [];
+  for (let got = 0; ;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    parts.push(value); got += value.length; loadBytes[url] = [got, Math.max(total, got)];
+  }
+  const { gltf, bin } = JSON.parse(await new Blob(parts).text());
+  const pad4 = (bytes, fill) => { const out = new Uint8Array(bytes.length + (-bytes.length & 3)).fill(fill); out.set(bytes); return out; };
+  const json = pad4(new TextEncoder().encode(JSON.stringify(gltf)), 0x20);
+  const raw = atob(bin), body = pad4(Uint8Array.from(raw, c => c.charCodeAt(0)), 0);
+  const glb = new Uint8Array(28 + json.length + body.length), dv = new DataView(glb.buffer);
+  dv.setUint32(0, 0x46546c67, true); dv.setUint32(4, 2, true); dv.setUint32(8, glb.length, true); // "glTF" v2
+  dv.setUint32(12, json.length, true); dv.setUint32(16, 0x4e4f534a, true); glb.set(json, 20);    // JSON 块
+  dv.setUint32(20 + json.length, body.length, true); dv.setUint32(24 + json.length, 0x004e4942, true); glb.set(body, 28 + json.length); // BIN 块
+  return new GLTFLoader().parseAsync(glb.buffer, '');
+}
+const loadGltf = url => gltfs[url] ??= fetchGlb(url).catch(e => { delete gltfs[url]; throw e; }); // 失败了下次还能重试
+const loadTex = url => new THREE.TextureLoader().loadAsync(url).then(t => { t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; return t; }); // <img> 加载，CSP 放行
+const loadProgress = urls => {
+  const [a, b] = urls.reduce(([a, b], u) => { const [l, t] = loadBytes[u] ?? [0, 1]; return [a + l, b + t]; }, [0, 0]);
+  return Math.min(99, Math.round(a / b * 100));
+};
+const hipY = sc => { sc.updateMatrixWorld(true); return sc.getObjectByName('Hip').getWorldPosition(new THREE.Vector3()).y; };
+function retargetClip(clip, ratio) {
+  const tracks = clip.tracks.filter(t => t.name.endsWith('.quaternion') || t.name === 'Hip.position').map(t => {
+    if (t.name !== 'Hip.position' || ratio === 1) return t;
+    t = t.clone();
+    for (let i = 0; i < t.values.length; i++) t.values[i] *= ratio;
+    return t;
+  });
+  return new THREE.AnimationClip(clip.name, clip.duration, tracks);
+}
+const animals = {}; // 每种角色只解析一次，之后每局复用
+const loadAnimal = key => animals[key] ??= Promise.all([loadTex(ANIMALS[key].tex), ...[ANIMALS[key].file, ...CLIP_FILES].map(loadGltf)]).then(([map, g, ...packs]) => {
+  const ratio = hipY(g.scene) / hipY(packs[0].scene);
+  return { scene: g.scene, map, scale: ANIMALS[key].scale, clips: packs.flatMap(p => p.animations).map(c => retargetClip(c, ratio)) };
+}).catch(e => { delete animals[key]; throw e; });
+// 选人页一打开就在后台下（约 3MB），等点 FIGHT 的时候通常已经好了
+for (const k in ANIMALS) loadAnimal(k).catch(() => {});
+
+// 每个招式在动画片段里截一段：出招帧从 a0 播到 a1（打到最远），判定帧停在 hold，收招帧播到 end。
+// 时间点是在浏览器里逐帧量手/脚骨骼位置找出来的。
+const ANIM_MOVES = {
+  lp:  { clip: 'box_01', a0: 0.33, a1: 0.6, hold: 0.67, end: 1.0 },
+  hp:  { clip: 'front_kick_01', a0: 0.45, a1: 1.13, hold: 1.2, end: 1.8 },
+  air: { clip: 'front_kick_01', a0: 0.85, a1: 1.13, hold: 1.2, end: 1.4 },
+};
+
+function buildAnimal(asset) {
+  const root = new THREE.Group(), body = new THREE.Group(), model = cloneSkinned(asset.scene);
+  body.rotation.y = -0.65; // 和方块角色一样侧身朝镜头
+  model.scale.setScalar(asset.scale);
+  root.add(body); body.add(model);
+  const mats = [], skins = [];
+  model.traverse(o => { if (o.isSkinnedMesh) skins.push(o); });
+  for (const o of skins) {
+    o.castShadow = true; o.frustumCulled = false; // 动画会把身体甩出包围盒，关掉剔除免得闪没
+    o.material = toon({ map: asset.map }); mats.push(o.material); // 每个实例单独一份材质，受击闪白才不会两只一起闪
+    const hull = new THREE.SkinnedMesh(o.geometry, OUTLINE_SKIN);
+    hull.position.copy(o.position); hull.quaternion.copy(o.quaternion); hull.scale.copy(o.scale);
+    hull.bind(o.skeleton, o.bindMatrix); hull.frustumCulled = false; o.parent.add(hull);
+  }
+  const mixer = new THREE.AnimationMixer(model);
+  const acts = Object.fromEntries(asset.clips.map(c => {
+    const a = mixer.clipAction(c); a.timeScale = 0; return [c.name, a]; // 时间由模拟帧手动给，不让 mixer 自己走
+  }));
+  // 骨骼原点不在脚底正中，按待机第一帧的胯部位置把模型挪回来
+  acts.idle.play(); mixer.update(0); model.updateMatrixWorld(true);
+  const hip = model.getObjectByName('Hip').getWorldPosition(new THREE.Vector3());
+  model.position.x -= hip.x; model.position.z -= hip.z;
+  return { root, body, model, mixer, acts, cur: acts.idle, clock: 0, flash: 0, mats };
+}
+
+function disposeView(v) {
+  scene.remove(v.root);
+  v.mixer?.stopAllAction(); v.mixer?.uncacheRoot(v.model);
+  v.root.traverse(o => {
+    if (!o.isMesh) return;
+    if (!v.mixer) o.geometry.dispose(); // 动物的几何体是缓存里共用的，不能释放
+    if (o.material === OUTLINE_BOX || o.material === OUTLINE_SKIN) return;
+    if (!v.mixer) o.material.map?.dispose();
+    o.material.dispose();
+  });
+}
+
+// 原型角色用方块拼。换成 Blender 模型时只替换这个函数：加载 glb，返回同样的字段即可。
+function buildFighter(ch, assets) {
+  const c = CHARS[ch];
+  if (c.model) return buildAnimal(assets[c.model]);
+  const mat = col => toon({ color: col });
+  const part = (geo, m, parent, x = 0, y = 0, z = 0) => {
+    const mesh = new THREE.Mesh(geo, m); mesh.position.set(x, y, z); mesh.castShadow = true; parent.add(mesh);
+    geo.computeBoundingBox(); // 描边：同一个几何体放大一圈、只画背面，每个方向固定外扩 0.025
+    const size = geo.boundingBox.getSize(new THREE.Vector3()), hull = new THREE.Mesh(geo, OUTLINE_BOX);
+    hull.scale.set(1 + 0.05 / Math.max(size.x, 0.05), 1 + 0.05 / Math.max(size.y, 0.05), 1 + 0.05 / Math.max(size.z, 0.05));
+    mesh.add(hull);
+    return mesh;
+  };
+  const pivot = (parent, x, y, z) => { const p = new THREE.Group(); p.position.set(x, y, z); parent.add(p); return p; };
+  const mBody = mat(c.body), mLeg = mat(c.leg), mSkin = mat(c.skin), mDark = mat(0x16131c);
+
+  const root = new THREE.Group(), body = pivot(root, 0, 0, 0);
+  body.rotation.y = -0.65; // 侧身朝镜头，让脸能被看到
+  const hip = pivot(body, 0, 0.82, 0);
+  part(new THREE.BoxGeometry(0.62, 0.72, 0.4), mBody, hip, 0, 0.38, 0);
+  const head = pivot(hip, 0, 1.0, 0);
+  part(new THREE.SphereGeometry(0.36, 24, 16), mSkin, head);
+  const faceTex = new THREE.CanvasTexture(faces[ch]); faceTex.colorSpace = THREE.SRGBColorSpace;
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.66), new THREE.MeshBasicMaterial({ map: faceTex, transparent: true }));
+  face.position.x = 0.37; face.rotation.y = Math.PI / 2; head.add(face);
+
+  if (c.extra === 'headphones') {
+    part(new THREE.SphereGeometry(0.375, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.42), mDark, head);
+    const band = part(new THREE.TorusGeometry(0.4, 0.04, 8, 24, Math.PI), mDark, head); band.rotation.y = Math.PI / 2;
+    for (const z of [-0.38, 0.38]) part(new THREE.CylinderGeometry(0.13, 0.13, 0.1, 16), mDark, head, 0, 0, z).rotation.x = Math.PI / 2;
+  } else {
+    const cat = c.extra === 'cat';
+    for (const z of [-0.2, 0.2]) {
+      const ear = part(new THREE.ConeGeometry(cat ? 0.13 : 0.12, cat ? 0.26 : 0.22, 4), mBody, head, cat ? 0 : 0.05, 0.36, z);
+      ear.rotation.set(Math.sign(z) * 0.35, 0, cat ? 0 : -0.35);
+    }
+    const tail = part(cat ? new THREE.CylinderGeometry(0.05, 0.05, 0.7, 8) : new THREE.TorusGeometry(0.14, 0.05, 8, 16), mBody, hip, -0.38, cat ? 0.35 : 0.3, 0);
+    tail.rotation.z = cat ? 0.6 : 0;
+    if (!cat) tail.rotation.y = Math.PI / 2;
+  }
+  // 两节肢体：上臂/大腿 + 小臂/小腿，关节处补个球，弯曲时不露缝
+  const limb = (y, z, w, len, m, endM, foot) => {
+    const upper = pivot(hip, 0, y, z), h = len / 2;
+    part(new THREE.BoxGeometry(w, h, w), m, upper, 0, -h / 2, 0);
+    part(new THREE.SphereGeometry(w * 0.56, 10, 8), m, upper, 0, -h, 0);
+    const lower = pivot(upper, 0, -h, 0);
+    part(new THREE.BoxGeometry(w * 0.9, h, w * 0.9), m, lower, 0, -h / 2, 0);
+    if (foot) part(new THREE.BoxGeometry(w * 1.6, 0.1, w * 1.1), endM, lower, 0.07, -h - 0.03, 0);
+    else part(new THREE.SphereGeometry(w * 0.72, 12, 8), endM, lower, 0.02, -h, 0);
+    return { upper, lower };
+  };
+  return {
+    root, body, hip, head, flash: 0, mats: [mBody, mLeg, mSkin, mDark],
+    armF: limb(0.66, 0.4, 0.17, 0.62, mBody, mSkin), armB: limb(0.66, -0.4, 0.17, 0.62, mBody, mSkin),
+    legF: limb(0, 0.16, 0.22, 0.8, mLeg, mDark, true), legB: limb(0, -0.16, 0.22, 0.8, mLeg, mDark, true),
+  };
+}
+
+// 动物角色：act → 动画片段，模拟帧 → 片段时间（所以定格、连段取消都和判定严格同步），切片段时交叉淡入。
+// Tripo 的动作库里没有格挡和下蹲：格挡用拳击起手的护脸架势（box_01 开头），下蹲用 box_02 开头的低身下潜。
+function poseAnimal(v, f, dt, won) {
+  v.clock += dt;
+  const loop = (name, speed = 1) => { const d = v.acts[name].getClip().duration; return [name, (v.clock * speed % d + d) % d]; };
+  const span = (a, b, p) => a + (b - a) * Math.min(1, Math.max(0, p));
+  let [name, t] = loop('idle'), fade = 0.15;
+  switch (f.act) {
+    case 'walk': [name, t] = loop('walk', f.vx * f.facing < 0 ? -1.3 : 1.6); break; // 后退就倒着播
+    case 'jump': name = 'jump'; t = span(0.4, 0.87, f.frame / 36); fade = 0.08; break; // 片段里一次起跳落地约 0.47 秒，拉到滞空 36 帧
+    case 'crouch': name = 'box_02'; t = 0.05; fade = 0.08; break;
+    case 'block': [name, t] = f.inp & D ? ['box_02', 0.05] : ['box_01', 0.1]; fade = 0.05; break;
+    case 'hit': name = 'hit_to_head'; t = span(0.1, 1.0, f.frame / f.stun); fade = 0.04; break;
+    case 'ko': [name, t] = loop('hurt'); fade = 0.3; break;
+    case 'attack': {
+      const m = MOVES[f.move], h = ANIM_MOVES[f.move], k = f.frame;
+      name = h.clip; fade = 0.05;
+      t = k <= m.startup ? span(h.a0, h.a1, k / m.startup)
+        : k <= m.startup + m.active ? span(h.a1, h.hold, (k - m.startup) / m.active)
+        : span(h.hold, h.end, (k - m.startup - m.active) / m.recovery);
+    }
+  }
+  if (won && f.act === 'idle') [name, t] = loop('victory_celebration');
+  const a = v.acts[name];
+  if (v.cur !== a) { a.reset().play(); v.cur.crossFadeTo(a, fade, false); v.cur = a; }
+  a.time = t;
+  v.mixer.update(dt);
+}
+
+// 方块角色：姿势由 (act, frame) 算出目标角度，再平滑过渡过去；出招判定帧直接到位（快出慢收）。
+// 角度约定：rotation.z 为正 = 往身前摆；小臂为正 = 弯肘，小腿为负 = 屈膝。
+function pose(v, f, pos, now, dt, hitstop, won) {
+  if (v.mixer) {
+    poseAnimal(v, f, dt, won);
+    const jitter = hitstop && ['hit', 'block', 'ko'].includes(f.act) ? Math.sin(now * 0.9) * 0.05 : 0;
+    v.root.position.set(pos.x + jitter, pos.y, 0);
+    v.root.scale.x = f.facing;
+    v.flash = Math.max(0, v.flash - dt * 7);
+    for (const m of v.mats) m.emissive.setScalar(v.flash * 0.8);
+    return;
+  }
+  const T = { aF: [1.0, 1.3], aB: [0.7, 1.6], lF: [0.35, -0.35], lB: [-0.25, -0.2], hipY: 0.82, hipZ: 0, hipT: 0, headZ: 0, bodyZ: 0 };
+  let rate = 18;
+  const bob = Math.sin(now / 170) * 0.025;
+  switch (f.act) {
+    case 'idle': T.hipY += bob - 0.02; T.lF[1] -= bob * 4; T.lB[1] -= bob * 4; T.aF[0] += bob * 2; break;
+    case 'walk': {
+      const s = Math.sin(pos.x * 7);
+      T.lF = [0.15 + s * 0.5, -0.2 - Math.max(0, s) * 0.7]; T.lB = [0.15 - s * 0.5, -0.2 - Math.max(0, -s) * 0.7];
+      T.hipY += Math.abs(s) * 0.03 - 0.03; rate = 30; break;
+    }
+    case 'crouch': T.hipY = 0.5; T.lF = [1.3, -2.0]; T.lB = [0.4, -1.6]; T.aF = [1.3, 1.4]; T.aB = [1.0, 1.7]; T.hipZ = -0.15; rate = 30; break;
+    case 'jump': T.lF = [1.4, -2.0]; T.lB = [0.6, -1.5]; T.aF = [2.0, 0.8]; T.aB = [1.6, 1.0]; break;
+    case 'block': T.hipY -= 0.08; T.aF = [1.5, 2.3]; T.aB = [1.3, 2.4]; T.hipZ = 0.12; T.lF = [0.5, -0.6]; T.lB = [-0.2, -0.5]; rate = 40; break;
+    case 'hit': T.hipZ = 0.45; T.headZ = 0.5; T.aF = [-0.4, 0.4]; T.aB = [2.2, 0.6]; T.lF = [0.7, -0.6]; rate = 40; break;
+    case 'ko': T.bodyZ = 1.45; T.aF = [2.8, 0.3]; T.aB = [2.5, 0.5]; T.lF = [0.5, -0.3]; T.lB = [0.2, -0.2]; rate = 8; break;
+    case 'attack': {
+      const m = MOVES[f.move], t = f.frame, a = m.startup, b = a + m.active;
+      const wind = Math.min(t / a, 1), back = t <= b ? 1 : Math.max(0, 1 - (t - b) / m.recovery);
+      rate = t <= a ? 30 : t <= b ? Infinity : 14;
+      if (f.move === 'lp') {
+        T.aF = t <= a ? [1.0 - wind * 0.4, 1.3 + wind * 0.6] : [1.0 + back * 0.62, 1.3 - back * 1.25];
+        T.hipT = t <= a ? -wind * 0.2 : back * 0.45;
+      } else if (f.move === 'hp') {
+        T.lF = t <= a ? [0.35 + wind * 0.8, -0.35 - wind * 1.6] : [0.35 + back * 1.25, -0.35 + back * 0.3];
+        T.hipZ = (t <= a ? wind : back) * 0.35; T.aF = [0.5, 1.6]; T.aB = [0.3, 1.2]; T.lB = [-0.2, -0.15];
+      } else {
+        T.lF = [0.6 + back * 0.8, -1.8 + back * 1.75]; T.lB = [0.8, -1.8]; T.aF = [2.2, 0.6]; T.aB = [1.8, 0.8];
+      }
+    }
+  }
+  const k = rate === Infinity ? 1 : 1 - Math.exp(-rate * dt);
+  const d = (o, p, val) => { o[p] += (val - o[p]) * k; };
+  const jitter = hitstop && ['hit', 'block', 'ko'].includes(f.act) ? Math.sin(now * 0.9) * 0.05 : 0; // 定格时挨打的人抖
+  v.root.position.set(pos.x + jitter, pos.y, 0);
+  v.root.scale.x = f.facing;
+  for (const [l, [u, lo]] of [[v.armF, T.aF], [v.armB, T.aB], [v.legF, T.lF], [v.legB, T.lB]]) {
+    d(l.upper.rotation, 'z', u); d(l.lower.rotation, 'z', lo);
+  }
+  d(v.hip.position, 'y', T.hipY); d(v.hip.rotation, 'z', T.hipZ); d(v.hip.rotation, 'y', T.hipT);
+  d(v.head.rotation, 'z', T.headZ); d(v.body.rotation, 'z', T.bodyZ);
+  v.flash = Math.max(0, v.flash - dt * 7);
+  for (const m of v.mats) m.emissive.setScalar(v.flash * 0.8);
+}
+
+// 打击反馈：音效 + 受击闪白 + 火花 + 震屏 + 重击镜头推近
+const sparks = [], streakGeo = new THREE.BoxGeometry(0.3, 0.035, 0.035), ringGeo = new THREE.RingGeometry(0.12, 0.2, 28);
+const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let shake = 0, zoom = 0;
+const POW_WORDS = ['POW!', 'BAM!', 'WHAM!', 'BOOM!', '砰！', '啪！'];
+const BURST = (() => { // 爆炸形气泡：长短交替的 28 个顶点
+  const pts = [];
+  for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2, r = i % 2 ? 0.62 : 1; pts.push(`${(Math.cos(a) * r * 52).toFixed(1)},${(Math.sin(a) * r * 39).toFixed(1)}`); }
+  return `<svg viewBox="-55 -42 110 84" aria-hidden="true"><polygon points="${pts.join(' ')}"/></svg>`;
+})();
+const projV = new THREE.Vector3();
+function pow(fx) {
+  projV.set(fx.x - fx.dir * 0.3, fx.y + 1.1, 0).project(camera); // 放在头顶偏后，别挡住脸
+  const el = document.createElement('div');
+  el.className = 'pow' + (fx.t === 'block' ? ' block' : fx.big || fx.ko ? ' big' : '');
+  el.innerHTML = BURST + `<b>${fx.t === 'block' ? 'BLOCK!' : fx.ko ? 'K.O.!!' : POW_WORDS[Math.random() * POW_WORDS.length | 0]}</b>`;
+  el.style.setProperty('--x', `${(projV.x + 1) / 2 * innerWidth}px`);
+  el.style.setProperty('--y', `${(1 - projV.y) / 2 * innerHeight}px`);
+  el.addEventListener('animationend', () => el.remove());
+  document.body.appendChild(el);
+}
+function onFx(fx) {
+  if (fx.t === 'swing') return sfx('swing');
+  pow(fx);
+  const block = fx.t === 'block', col = block ? 0xffffff : 0xffd60a;
+  sfx(block ? 'block' : fx.ko ? 'ko' : fx.big ? 'heavy' : 'hit');
+  if (!block) views[fx.who].flash = 1;
+  const n = block ? 6 : fx.ko ? 24 : fx.big ? 16 : 10;
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(streakGeo, new THREE.MeshBasicMaterial({ color: i % 3 ? col : INK, transparent: true })); // 掺几道黑线，像漫画速度线
+    const a = block ? Math.random() * Math.PI * 2 : (fx.dir > 0 ? 0 : Math.PI) + (Math.random() - 0.5) * 2.4; // 火花顺着出拳方向喷
+    const sp = 0.08 + Math.random() * 0.14;
+    m.position.set(fx.x, fx.y, 0.4); m.rotation.z = a;
+    m.userData = { v: new THREE.Vector3(Math.cos(a) * sp, Math.sin(a) * sp, 0), life: 16, grow: 0 };
+    scene.add(m); sparks.push(m);
+  }
+  const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: col, transparent: true, side: THREE.DoubleSide }));
+  ring.position.set(fx.x, fx.y, 0.45); ring.userData = { v: new THREE.Vector3(), life: 14, grow: fx.big || fx.ko ? 0.4 : 0.24 };
+  scene.add(ring); sparks.push(ring);
+  if (calm) return;
+  shake = Math.max(shake, block ? 0.04 : fx.ko ? 0.4 : fx.big ? 0.22 : 0.1);
+  if (fx.big || fx.ko) zoom = fx.ko ? 2.2 : 1.0;
+}
+function updateSparks() {
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const m = sparks[i], d = m.userData;
+    m.position.add(d.v); d.v.multiplyScalar(0.9); m.scale.addScalar(d.grow);
+    m.material.opacity = --d.life / 16;
+    if (d.life <= 0) { scene.remove(m); m.material.dispose(); sparks.splice(i, 1); }
+  }
+}
+
+// ============ HUD / 选人 / 主循环 ============
+const $ = id => document.getElementById(id);
+const pick = [3, 4];
+let state = null, views = [], cpuOn = true, prevPos = null;
+
+$('cards').innerHTML = CHARS.map((c, i) => `
+  <div class="card" id="card${i}">
+    <img src="${c.img ?? faces[i].toDataURL()}" alt="${c.name}的头像">
+    <h2>${c.name}</h2><p>${c.tag}</p>
+    <div class="stat">速度<span><i style="width:${c.speed * 70}%"></i></span></div>
+    <div class="stat">力量<span><i style="width:${c.power * 70}%"></i></span></div>
+    <div class="picks"><button class="pick1" data-p="0" data-c="${i}">1P</button><button class="pick2" data-p="1" data-c="${i}">2P</button></div>
+  </div>`).join('');
+function syncCards() {
+  CHARS.forEach((_, i) => {
+    $('card' + i).toggleAttribute('data-p1', pick[0] === i);
+    $('card' + i).toggleAttribute('data-p2', pick[1] === i);
+  });
+  document.querySelectorAll('.picks button').forEach(b => b.setAttribute('aria-pressed', pick[b.dataset.p] === +b.dataset.c));
+}
+$('cards').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  pick[b.dataset.p] = +b.dataset.c; syncCards();
+});
+syncCards();
+$('go').addEventListener('click', startMatch);
+
+let loading = false, loadError = null;
+async function startMatch() {
+  initAudio();
+  const keys = [...new Set(pick.map(p => CHARS[p].model).filter(Boolean))];
+  let assets = {};
+  if (keys.length) {
+    if (loading) return;
+    loading = true;
+    const urls = [...keys.map(k => ANIMALS[k].file), ...CLIP_FILES];
+    const tick = setInterval(() => { $('go').textContent = `LOADING ${loadProgress(urls)}%`; }, 150);
+    $('loadMsg').hidden = true;
+    assets = await Promise.all(keys.map(async k => [k, await loadAnimal(k)])).then(Object.fromEntries).catch(e => (console.error(e), loadError = e, null));
+    clearInterval(tick); loading = false;
+    $('go').textContent = 'FIGHT!';
+    if (!assets) { // Artifact 里 alert() 不显示，错误直接写在按钮下面
+      $('loadMsg').textContent = `模型没加载出来：${loadError?.message ?? '网络错误'}。再点一次 FIGHT 重试，或者先选方块角色。`;
+      $('loadMsg').hidden = false;
+      return;
+    }
+  }
+  views.forEach(disposeView);
+  views = pick.map(p => buildFighter(p, assets));
+  views.forEach(v => scene.add(v.root));
+  renderer.compile(scene, camera); // 着色器提前编译，免得开打第一拳卡一下
+  perfMs = 0; perfN = -90;
+  cpuOn = $('cpu').checked;
+  Object.assign(ai, { t: 0, k: 0 });
+  state = newMatch(pick.slice()); prevPos = null;
+  $('n0').innerHTML = `1P ${CHARS[pick[0]].name}`;
+  $('n1').innerHTML = `${cpuOn ? '<small>CPU</small>' : ''}${CHARS[pick[1]].name} 2P`;
+  $('select').hidden = true; $('hud').hidden = $('hint').hidden = $('pad').hidden = false;
+  document.activeElement?.blur();
+}
+function backToSelect() {
+  state = null;
+  $('select').hidden = false; $('hud').hidden = $('hint').hidden = $('pad').hidden = true;
+  $('bannerMain').textContent = $('bannerSub').textContent = '';
+}
+
+const setText = (id, t) => { if ($(id).textContent !== t) $(id).textContent = t; };
+function hud(s) {
+  s.f.forEach((f, i) => {
+    const hpT = `scaleX(${f.hp / 100})`;
+    if ($('hp' + i).style.transform !== hpT) $('hp' + i).style.transform = $('lag' + i).style.transform = hpT;
+    [...$('w' + i).children].forEach((b, k) => b.classList.toggle('on', s.wins[i] > k));
+    const o = s.f[1 - i];
+    setText('c' + i, (o.act === 'hit' || o.act === 'ko') && o.combo >= 2 ? `${o.combo} HITS!` : '');
+  });
+  setText('timer', String(Math.ceil(s.timer / 60)));
+  let main = '', sub = '';
+  if (s.phase === 'ready') main = s.phaseT > 40 ? `第 ${s.round} 回合` : '准备';
+  else if (s.phase === 'fight' && s.timer > ROUND_FRAMES - 45) main = 'FIGHT!';
+  else if (s.phase === 'ko') main = s.f.some(f => f.hp === 0) ? 'K.O.' : '时间到';
+  else if (s.phase === 'over') {
+    main = `${CHARS[s.chars[s.wins[0] > s.wins[1] ? 0 : 1]].name} 胜利`;
+    sub = 'Enter 再来一局 · Esc 换角色';
+  }
+  setText('bannerMain', main); setText('bannerSub', sub);
+}
+
+function resize() {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  // 竖屏时按横向视野来定：保证两个角色都在画面里（16:9 时是 35°）
+  camera.fov = Math.min(75, Math.max(35, 2 * Math.atan(Math.tan(35 * Math.PI / 360) * (16 / 9) / camera.aspect) * 180 / Math.PI));
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+// 模拟固定 60Hz，渲染跟着屏幕刷新率走；两次模拟之间的位置做插值，所以 120/144Hz 屏也不抖
+const DT = 1000 / 60, camTarget = new THREE.Vector3(0, 1.1, 0);
+let acc = 0, last = performance.now(), inp1 = 0, perfMs = 0, perfN = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const ms = Math.min(now - last, 100), dt = ms / 1000; last = now;
+  if (!state) { acc = 0; return; } // 选人页挡住了整个画面，不用画
+  // 自适应分辨率：1 秒内平均帧时间超过 20ms（低于 50fps）就把像素比降一档，最低 0.6
+  if (++perfN > 0 && (perfMs += ms) > 1000) { // perfN 从负数开始 = 开局头一秒多（建模型、编译着色器）不算
+    if (perfMs / perfN > 20 && pixelRatio > 0.6) { pixelRatio = Math.max(0.6, pixelRatio - 0.15); renderer.setPixelRatio(pixelRatio); resize(); }
+    perfMs = perfN = 0;
+  }
+  acc += ms * (state?.phase === 'ko' && state.phaseT > 120 ? 0.3 : 1); // K.O. 瞬间子弹时间
+  while (acc >= DT) {
+    acc -= DT;
+    if (!state) continue;
+    prevPos = state.f.map(f => ({ x: f.x, y: f.y }));
+    step(state, [inp1 = input1P(state), cpuOn ? cpu(state, 1) : readKeys(1)]);
+    state.fx.forEach(onFx);
+  }
+  if (state) {
+    const al = acc / DT;
+    state.f.forEach((f, i) => {
+      const p = prevPos?.[i] ?? f;
+      pose(views[i], f, { x: p.x + (f.x - p.x) * al, y: p.y + (f.y - p.y) * al }, now, dt, state.hitstop, state.koWinner === i && state.phase !== 'fight');
+    });
+    hud(state);
+    for (const b of padBtns) { // 键盘按下时侧边按钮也跟着亮
+      const bit = +b.dataset.bit;
+      b.toggleAttribute('data-on', bit ? !!(inp1 & bit) : padGuard || state.f[0].act === 'block');
+    }
+    const [a, b] = state.f, dx = Math.abs(a.x - b.x);
+    camTarget.x += ((a.x + b.x) / 2 * 0.8 - camTarget.x) * (1 - Math.exp(-6 * dt));
+    camera.position.z += (Math.min(14, Math.max(10.5, 8 + dx * 0.7)) - zoom - camera.position.z) * (1 - Math.exp(-8 * dt));
+  }
+  updateSparks();
+  camera.position.x = camTarget.x + Math.sin(now * 0.13) * shake;
+  camera.position.y = 2.2 + Math.cos(now * 0.11) * shake * 0.6;
+  camera.lookAt(camTarget.x, 1.1, 0);
+  shake *= Math.exp(-9 * dt); zoom *= Math.exp(-3 * dt);
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+</script>

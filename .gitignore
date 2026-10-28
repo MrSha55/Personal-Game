@@ -1,0 +1,5 @@
+# Tripo API Key，绝不能传上 GitHub
+.env
+.claude/
+__pycache__/
+_site/
