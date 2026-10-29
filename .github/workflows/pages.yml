@@ -28,7 +28,7 @@ jobs:
         run: |
           mkdir -p _site/assets
           { echo '<!doctype html>'; echo '<html lang="zh-CN">'; cat meme-fight.html; } > _site/index.html
-          cp assets/husky.json assets/penguin.json assets/anims_*.json assets/*.jpg assets/*_card.webp _site/assets/
+          cp assets/husky.json assets/penguin.json assets/blob.json assets/anims_*.json assets/*.jpg assets/*_card.webp _site/assets/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
       - id: deployment

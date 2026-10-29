@@ -48,6 +48,33 @@ body{background:var(--hp);color:var(--fg);font-family:var(--body);overflow:hidde
 #hint{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(560px,calc(100% - 440px));text-align:center;font-size:12px;pointer-events:none;background:#fff;border:2px solid var(--ink);padding:3px 10px}
 @media (max-width:1100px){#hint{display:none!important}}
 
+/* 气槽：满了闪 */
+.meter{width:72%;height:9px;background:#fff;border:3px solid var(--ink);position:relative;overflow:hidden;transform:skewX(-14deg)}
+.side.r .meter{transform:skewX(14deg)}
+.meter i{position:absolute;inset:0;background:var(--p2);transform-origin:left;transition:transform .15s}
+.side.r .meter i{transform-origin:right}
+.meter.full i{background:var(--p1);animation:full .5s steps(2) infinite}
+@keyframes full{50%{background:var(--hp-drain)}}
+.combo{white-space:nowrap}
+
+/* 伤害跳字：先放大砸下来再往上飘 */
+.dmg{position:fixed;left:0;top:0;pointer-events:none;font-family:var(--display);font-size:var(--s);line-height:1;letter-spacing:.02em;color:var(--hp);
+  -webkit-text-stroke:4px var(--ink);paint-order:stroke fill;text-shadow:3px 3px 0 var(--ink);translate:-50% -50%;animation:dmg .85s cubic-bezier(.2,.9,.3,1) forwards}
+.dmg.big{color:#fff;text-shadow:4px 4px 0 var(--p1)}
+.dmg.sup{color:var(--p1);text-shadow:4px 4px 0 var(--hp)}
+.dmg.chip{color:#ddd;font-size:20px}
+@keyframes dmg{0%{transform:translate(var(--x),var(--y)) scale(1.9);opacity:0}12%{transform:translate(var(--x),var(--y)) scale(.92);opacity:1}22%{transform:translate(var(--x),var(--y)) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(calc(var(--x) + var(--dx)),calc(var(--y) - 46px)) scale(.95)}}
+
+/* 完美格挡白闪；大招：压暗 + 放射线 + 招式名 */
+#flash{position:fixed;inset:0;pointer-events:none;background:#fff;animation:flash .22s ease-out forwards}
+@keyframes flash{0%{opacity:.75}100%{opacity:0}}
+#superfx{position:fixed;inset:0;pointer-events:none;display:grid;place-items:center;
+  background:repeating-conic-gradient(from 0deg at 50% 50%,rgba(18,16,20,.0) 0 4deg,rgba(18,16,20,.35) 4deg 8deg),radial-gradient(circle,transparent 20%,rgba(18,16,20,.7));animation:superbg .75s ease-out forwards}
+#superfx b{font-family:var(--cn);font-weight:400;font-size:clamp(40px,8vw,96px);color:#fff;-webkit-text-stroke:7px var(--ink);paint-order:stroke fill;text-shadow:8px 8px 0 var(--c,var(--p1));
+  background:var(--c,var(--p1));padding:0 .4em;border:5px solid var(--ink);transform:skewX(-12deg);animation:supername .75s cubic-bezier(.2,1.4,.4,1) forwards}
+@keyframes superbg{0%{opacity:0}15%,75%{opacity:1}100%{opacity:0}}
+@keyframes supername{0%{transform:translateX(60vw) skewX(-12deg);opacity:1}25%,75%{transform:translateX(0) skewX(-12deg);opacity:1}100%{transform:translateX(-60vw) skewX(-12deg);opacity:0}}
+
 /* 拟声词气泡：在命中位置弹出 */
 .pow{position:fixed;left:0;top:0;width:118px;height:88px;margin:-44px 0 0 -59px;display:grid;place-items:center;pointer-events:none;
   animation:pow .75s cubic-bezier(.2,1.5,.4,1) forwards}
@@ -58,9 +85,12 @@ body{background:var(--hp);color:var(--fg);font-family:var(--body);overflow:hidde
 .pow.big b{font-size:44px}
 .pow.block polygon{fill:#fff}
 .pow.block b{color:var(--p2);font-size:24px}
+.pow.parry{width:170px;height:120px;margin:-60px 0 0 -85px}
+.pow.parry polygon{fill:#bfefff}
+.pow.parry b{color:#fff;font-size:34px;text-shadow:3px 3px 0 var(--p2)}
 @keyframes pow{0%{transform:translate(var(--x),var(--y)) scale(.2) rotate(-14deg)}22%{transform:translate(var(--x),var(--y)) scale(1.12) rotate(5deg)}70%{opacity:1}100%{opacity:0;transform:translate(var(--x),calc(var(--y) - 24px)) scale(1)}}
 @keyframes powfade{0%,60%{opacity:1;transform:translate(var(--x),var(--y))}100%{opacity:0;transform:translate(var(--x),var(--y))}}
-@media (prefers-reduced-motion:reduce){.pow{animation:powfade .75s forwards}}
+@media (prefers-reduced-motion:reduce){.pow,.dmg{animation:powfade .75s forwards}#superfx,#superfx b,#flash{animation:powfade .75s forwards}}
 
 /* 侧边按钮：左手方向，右手出招。手机能点，电脑上按键盘时也会跟着亮 */
 #pad{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none;
@@ -75,7 +105,8 @@ body{background:var(--hp);color:var(--fg);font-family:var(--body);overflow:hidde
 .dpad .up{grid-column:2}.dpad .left{grid-column:1;grid-row:2}.dpad .down{grid-column:2;grid-row:2}.dpad .right{grid-column:3;grid-row:2}
 .acts{display:grid;grid-template-columns:repeat(2,74px);grid-template-rows:56px 74px;gap:10px 12px}
 .acts button{border-radius:50%}
-#pad .acts .guard{grid-column:1/3;justify-self:center;width:100px;border-radius:28px}
+#pad .acts .guard,#pad .acts .super{border-radius:28px}
+#pad .acts .super{background:var(--ink);color:var(--hp)}
 #pad .acts .lp{background:var(--p1);color:#fff}
 #pad .acts .hp{background:var(--p2);color:#fff}
 #pad .acts .lp small,#pad .acts .hp small{color:#fff}
@@ -87,8 +118,8 @@ body{background:var(--hp);color:var(--fg);font-family:var(--body);overflow:hidde
   padding-block:32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 #select h1{margin:0;font-family:var(--cn);font-weight:400;font-size:clamp(44px,9vw,92px);color:#fff;-webkit-text-stroke:8px var(--ink);paint-order:stroke fill;text-shadow:8px 8px 0 var(--p1);text-wrap:balance;text-align:center;transform:rotate(-2deg)}
 #select .sub{margin:0;background:#fff;border:3px solid var(--ink);box-shadow:var(--drop);padding:4px 14px;text-align:center}
-.cards{display:grid;grid-template-columns:repeat(5,minmax(0,176px));gap:16px;width:100%;justify-content:center}
-@media (max-width:1000px){.cards{grid-template-columns:repeat(3,minmax(0,200px))}}
+.cards{display:grid;grid-template-columns:repeat(6,minmax(0,170px));gap:16px;width:100%;justify-content:center}
+@media (max-width:1180px){.cards{grid-template-columns:repeat(3,minmax(0,200px))}}
 @media (max-width:640px){.cards{grid-template-columns:repeat(2,minmax(0,220px))}}
 .card{background:var(--card);border:4px solid var(--ink);box-shadow:6px 6px 0 var(--ink);padding:14px;display:grid;gap:8px;justify-items:center;min-width:0}
 .card[data-p1]{box-shadow:6px 6px 0 var(--p1);border-color:var(--p1)}
@@ -96,6 +127,10 @@ body{background:var(--hp);color:var(--fg);font-family:var(--body);overflow:hidde
 .card img{width:104px;height:104px;object-fit:contain}
 .card h2{margin:0;font-family:var(--cn);font-weight:400;font-size:26px}
 .card p{margin:0;color:var(--muted);font-size:13px;text-align:center}
+.mv{margin:0;display:grid;grid-template-columns:auto 1fr;gap:2px 8px;width:100%;font-size:12px}
+.mv dt{font-family:var(--body);font-weight:700;color:var(--fg)}
+.mv dd{margin:0;color:var(--muted)}
+.mv dd.su{color:var(--p1);font-weight:700}
 .stat{display:grid;grid-template-columns:3em 1fr;gap:8px;align-items:center;width:100%;font-size:12px;color:var(--muted)}
 .stat span{height:8px;background:#eee;border:2px solid var(--ink)}
 .stat span i{display:block;height:100%;background:var(--p1)}
@@ -117,12 +152,14 @@ kbd{font-family:var(--body);border:2px solid var(--ink);padding:0 5px;color:var(
 <div id="stage"></div>
 
 <div id="hud" hidden>
-  <div class="side"><div class="name" id="n0"></div><div class="bar"><u id="lag0"></u><i id="hp0"></i></div><div class="pips" id="w0"><b></b><b></b></div><div class="combo inked" id="c0"></div></div>
+  <div class="side"><div class="name" id="n0"></div><div class="bar"><u id="lag0"></u><i id="hp0"></i></div><div class="meter"><i id="me0"></i></div><div class="pips" id="w0"><b></b><b></b></div><div class="combo inked" id="c0"></div></div>
   <div id="timer">60</div>
-  <div class="side r"><div class="name" id="n1"></div><div class="bar"><u id="lag1"></u><i id="hp1"></i></div><div class="pips" id="w1"><b></b><b></b></div><div class="combo inked" id="c1"></div></div>
+  <div class="side r"><div class="name" id="n1"></div><div class="bar"><u id="lag1"></u><i id="hp1"></i></div><div class="meter"><i id="me1"></i></div><div class="pips" id="w1"><b></b><b></b></div><div class="combo inked" id="c1"></div></div>
 </div>
+<div id="flash" hidden></div>
+<div id="superfx" hidden><b id="superName"></b></div>
 <div id="banner"><b id="bannerMain"></b><span id="bannerSub"></span></div>
-<div id="hint" hidden>按住「后退」或「防」防御 · 下蹲躲轻拳 · 轻拳打中马上接重脚 · <kbd>Esc</kbd> 回选人</div>
+<div id="hint" hidden>按住「后」防御，蹲着按「后」防下段 · 快打到时才按「后」= 完美格挡 · ↓↘→J / ←→K 必杀 · 气满 J+K 大招 · <kbd>Esc</kbd> 回选人</div>
 <div id="pad" hidden aria-label="1P 操作按钮">
   <div class="dpad">
     <button class="up" data-bit="4">跳<small>W</small></button>
@@ -132,6 +169,7 @@ kbd{font-family:var(--body);border:2px solid var(--ink);padding:0 5px;color:var(
   </div>
   <div class="acts">
     <button class="guard" data-bit="0">防<small>按住</small></button>
+    <button class="super" data-bit="48">大招<small>J+K</small></button>
     <button class="lp" data-bit="16">轻拳<small>J</small></button>
     <button class="hp" data-bit="32">重脚<small>K</small></button>
   </div>
@@ -149,7 +187,10 @@ kbd{font-family:var(--body);border:2px solid var(--ink);padding:0 5px;color:var(
   <div class="keys">
     <b>1P</b><span><kbd>A</kbd><kbd>D</kbd> 移动 · <kbd>W</kbd> 跳 · <kbd>S</kbd> 蹲 · <kbd>J</kbd> 轻拳 · <kbd>K</kbd> 重脚，也可以点屏幕两侧的按钮</span>
     <b>2P</b><span>方向键 · <kbd>小键盘1</kbd>/<kbd>.</kbd> 轻拳 · <kbd>小键盘2</kbd>/<kbd>/</kbd> 重脚</span>
-    <b>连段</b><span>轻拳打中后马上按轻拳或重脚可以接上，例如 <kbd>J</kbd><kbd>J</kbd><kbd>K</kbd>。</span>
+    <b>招式</b><span>蹲着按 <kbd>K</kbd> 下段踢（只能蹲防）· 空中 <kbd>J</kbd> 拳 / <kbd>K</kbd> 踢 · 每人两个必杀（卡片上写着），↓↘→ 就是 <kbd>S</kbd> 再 <kbd>D</kbd> 一滑。</span>
+    <b>大招</b><span>打人、挨打、格挡都会攒气，气槽满了 <kbd>J</kbd>+<kbd>K</kbd> 一起按放大招，每个角色都不一样。</span>
+    <b>防御</b><span>按住「后」防，蹲着按「后」才挡得住下段。对方快打到身上的一瞬间再按「后」= <b>完美格挡</b>：不掉血、对方被弹开。</span>
+    <b>连段</b><span>打中后马上按更重的招可以接上：轻拳 → 重脚/下段 → 必杀 → 大招，例如 <kbd>J</kbd><kbd>J</kbd><kbd>K</kbd>。</span>
     <b>说明</b><span>三局两胜，每局 60 秒，有音效。手机上用两侧按钮操作 1P。</span>
   </div>
 </div>
@@ -170,88 +211,168 @@ const fontsReady = new Promise(res => {
 // 联机要点：step(state, [p1按键, p2按键]) 只用输入推进，不读时间、不用随机数，
 // 所以两端喂同样的输入就得到同样的结果；state 是纯 JSON，structuredClone 一下就是回滚快照。
 const L = 1, R = 2, U = 4, D = 8, A = 16, B = 32;
-const STAGE_HALF = 6.5, GRAV = 0.014, ROUND_FRAMES = 60 * 60, WIN_ROUNDS = 2, BODY_W = 0.7, BUFFER = 8;
+const STAGE_HALF = 6.5, GRAV = 0.018, JUMP_V = 0.28, ROUND_FRAMES = 60 * 60, WIN_ROUNDS = 2, BODY_W = 0.7, BUFFER = 8;
+const JUMP_FRAMES = Math.round(2 * JUMP_V / GRAV);
+// 完美格挡窗口（打到身上前多少帧内新按"后"）/ 气槽上限 / 大招定格 / 搓招时限，单位都是帧
+const PARRY = 12, METER = 100, SUPER_FREEZE = 45, CMD = 20;
 
+// 必杀技：s1 = ↓↘→+拳，s2 = ←→+脚，su = 气满了 J+K 同时按（大招）。
+// 字段和普通招一样，另外：dash 前冲速度（碰到人就停）、leap [起跳速度, 前飞速度]（落地才收招）、
+// proj 飞行道具、hits/every 多段、launch 最后一下打飞、freeze 冰冻（超长硬直）、guard 'low' 只能蹲防 / 'high' 只能站防
+const sp = (name, o) => ({ name, startup: 8, active: 4, recovery: 16, dmg: 8, hitstun: 20, blockstun: 12, push: 0.12, stop: 9, tier: 2, ...o });
+const su = (name, o) => sp(name, { tier: 3, super: true, ...o });
 const CHARS = [
-  { name: '大魔王', tag: '冷静的中单，什么都会一点', speed: 1.0, power: 1.0, body: 0xd7263d, leg: 0x1b1a22, skin: 0xf3cfb0, extra: 'headphones', face: faceDemon },
-  { name: '哈基米', tag: '腿短手快，哈气连打', speed: 1.25, power: 0.85, body: 0xf4a340, leg: 0xfff1df, skin: 0xfff1df, extra: 'cat', face: faceCat },
-  { name: '神烦狗', tag: 'such power, very slow, wow', speed: 0.85, power: 1.25, body: 0xe3b46b, leg: 0xe3b46b, skin: 0xfff3dc, extra: 'dog', face: faceDoge },
-  { name: '哈士奇', tag: '嗷呜一声，拳脚都会', speed: 1.05, power: 1.05, model: 'husky', img: 'assets/husky_card.webp' },
-  { name: '小企鹅', tag: '毛线帽一戴，扑腾就是干', speed: 1.15, power: 0.9, model: 'penguin', img: 'assets/penguin_card.webp' },
+  { name: '大魔王', tag: '冷静的中单，什么都会一点', speed: 1.0, power: 1.0, body: 0xd7263d, leg: 0x1b1a22, skin: 0xf3cfb0, extra: 'headphones', face: faceDemon, col: '#e8262b', moves: {
+    s1: sp('魔音波', { startup: 12, active: 2, recovery: 20, dmg: 9, pose: 'throw', proj: { speed: 0.13, w: 0.6, h: 0.6, y: 1.0, life: 70, shape: 'ring' } }),
+    s2: sp('魔王飞踢', { startup: 8, active: 10, recovery: 18, dmg: 12, hitstun: 22, blockstun: 14, push: 0.25, stop: 10, dash: 0.2, box: [0.9, 0.6, 0.9, 0.6], pose: 'hp' }),
+    su: su('终极魔音炮', { startup: 14, active: 2, recovery: 40, dmg: 7, hits: 5, every: 5, hitstun: 30, push: 0.06, stop: 4, launch: 0.2, pose: 'throw', proj: { speed: 0.2, w: 1.2, h: 1.5, y: 0.4, life: 60, shape: 'beam' } }),
+  } },
+  { name: '哈基米', tag: '腿短手快，哈气连打', speed: 1.25, power: 0.85, body: 0xf4a340, leg: 0xfff1df, skin: 0xfff1df, extra: 'cat', face: faceCat, col: '#f4a340', moves: {
+    s1: sp('哈气连打', { startup: 6, active: 12, recovery: 14, dmg: 3, hits: 4, every: 3, hitstun: 14, blockstun: 8, push: 0.03, stop: 3, box: [0.9, 0.9, 1.2, 0.9], pose: 'flurry' }),
+    s2: sp('猫猫飞扑', { startup: 6, active: 60, recovery: 12, dmg: 10, guard: 'high', leap: [0.2, 0.16], box: [0.6, 0, 0.9, 1.0], pose: 'ak' }),
+    su: su('无影猫猫拳', { startup: 6, active: 44, recovery: 30, dmg: 3, hits: 10, every: 4, dash: 0.2, hitstun: 16, push: 0.02, stop: 3, launch: 0.22, box: [0.8, 0.6, 1.0, 1.2], pose: 'flurry' }),
+  } },
+  { name: '神烦狗', tag: 'such power, very slow, wow', speed: 0.85, power: 1.25, body: 0xe3b46b, leg: 0xe3b46b, skin: 0xfff3dc, extra: 'dog', face: faceDoge, col: '#c9862f', moves: {
+    s1: sp('wow 头槌', { startup: 14, active: 8, recovery: 22, dmg: 14, hitstun: 26, blockstun: 16, push: 0.3, stop: 13, dash: 0.14, launch: 0.16, box: [0.8, 1.0, 0.8, 0.9], pose: 'headbutt' }),
+    s2: sp('very 震地', { startup: 16, active: 2, recovery: 22, dmg: 10, guard: 'low', pose: 'hp', proj: { speed: 0.16, w: 0.9, h: 0.4, y: 0, life: 45, shape: 'wave' } }),
+    su: su('much 天降', { startup: 8, active: 90, recovery: 30, dmg: 32, hitstun: 40, push: 0.2, stop: 22, launch: 0.25, leap: [0.36, 0.07], box: [0.3, -0.2, 2.4, 1.0], pose: 'slam' }),
+  } },
+  { name: '哈士奇', tag: '嗷呜一声，拳脚都会', speed: 1.05, power: 1.05, model: 'husky', img: 'assets/husky_card.webp', col: '#7f97b3', moves: {
+    s1: sp('嗷呜～', { startup: 12, active: 2, recovery: 18, dmg: 8, pose: 'roar', proj: { speed: 0.1, w: 0.7, h: 0.7, y: 1.35, life: 80, shape: 'ring' } }), // 头那么高，蹲下能躲
+    s2: sp('拆家旋风腿', { startup: 7, active: 18, recovery: 16, dmg: 5, hits: 3, every: 6, hitstun: 18, push: 0.06, stop: 5, dash: 0.09, box: [0.8, 0.5, 1.2, 0.8], pose: 'spin' }),
+    su: su('月夜狼嚎', { startup: 10, active: 24, recovery: 30, dmg: 9, hits: 3, every: 8, hitstun: 30, push: 0.15, stop: 8, launch: 0.2, box: [0, 0, 5, 3], pose: 'roar' }), // 以自己为中心，前后都打
+  } },
+  { name: '小企鹅', tag: '毛线帽一戴，扑腾就是干', speed: 1.15, power: 0.9, model: 'penguin', img: 'assets/penguin_card.webp', col: '#3fb6f0', moves: {
+    s1: sp('冰球', { startup: 10, active: 2, recovery: 18, dmg: 7, guard: 'low', pose: 'throw', proj: { speed: 0.12, w: 0.6, h: 0.4, y: 0.05, life: 80, shape: 'ice' } }),
+    s2: sp('肚皮滑行', { startup: 6, active: 20, recovery: 16, dmg: 9, guard: 'low', dash: 0.22, box: [0.5, 0, 1.2, 0.6], pose: 'slide' }),
+    su: su('企鹅冰封', { startup: 10, active: 2, recovery: 30, dmg: 18, freeze: 75, push: 0.04, stop: 18, pose: 'throw', proj: { speed: 0.16, w: 1.0, h: 1.6, y: 0.2, life: 70, shape: 'ice' } }),
+  } },
+  { name: '黄胖胖', tag: '肉多弹性好，一撞一个准', speed: 0.9, power: 1.15, model: 'blob', img: 'assets/blob_card.webp', col: '#f2b705', moves: {
+    s1: sp('肚皮弹', { startup: 10, active: 4, recovery: 18, dmg: 11, hitstun: 24, blockstun: 14, push: 0.45, stop: 11, launch: 0.12, box: [0.75, 0.5, 0.9, 1.2], pose: 'belly' }),
+    s2: sp('弹弹压', { startup: 8, active: 60, recovery: 14, dmg: 13, guard: 'high', leap: [0.26, 0.1], box: [0.3, -0.1, 1.2, 1.0], pose: 'slam' }),
+    su: su('黄色大胖弹', { startup: 10, active: 50, recovery: 26, dmg: 5, hits: 6, every: 5, dash: 0.2, hitstun: 20, push: 0.05, stop: 4, launch: 0.24, box: [0.5, 0, 1.4, 1.6], pose: 'roll' }),
+  } },
 ];
 
-// 帧数据。box = [前方偏移, 离地高度, 宽, 高]，相对角色脚底；stop = 命中后全场定格帧数
+// 普通招帧数据。box = [前方偏移, 离地高度, 宽, 高]，相对角色脚底；stop = 命中后全场定格帧数；
+// tier 越高越"重"：打中后只能取消到更高 tier 的招（轻拳例外可以接轻拳）= 连段规则
 const MOVES = {
-  lp:  { startup: 4,  active: 3,  recovery: 9,  dmg: 6,  hitstun: 15, blockstun: 9,  push: 0.06, stop: 6,  box: [0.6, 1.3, 0.7, 0.35] },
-  hp:  { startup: 10, active: 4,  recovery: 18, dmg: 13, hitstun: 22, blockstun: 13, push: 0.20, stop: 11, box: [0.7, 0.6, 0.8, 0.45] },
-  air: { startup: 5,  active: 10, recovery: 6,  dmg: 8,  hitstun: 16, blockstun: 10, push: 0.12, stop: 7,  box: [0.5, 0.1, 0.7, 0.6] },
+  lp: { startup: 4, active: 3, recovery: 8,  dmg: 6,  hitstun: 15, blockstun: 9,  push: 0.06, stop: 6,  tier: 0, box: [0.85, 1.3, 0.8, 0.35], pose: 'lp' },
+  hp: { startup: 9, active: 4, recovery: 16, dmg: 12, hitstun: 22, blockstun: 13, push: 0.20, stop: 10, tier: 1, box: [1.15, 0.7, 1.0, 0.6], dash: 0.025, pose: 'hp' },
+  lk: { startup: 7, active: 3, recovery: 14, dmg: 9,  hitstun: 18, blockstun: 11, push: 0.12, stop: 8,  tier: 1, box: [1.15, 0, 1.0, 0.4], guard: 'low', pose: 'lk' },
+  ap: { startup: 4, active: 6, recovery: 6,  dmg: 6,  hitstun: 14, blockstun: 8,  push: 0.08, stop: 6,  tier: 0, box: [0.8, 0.9, 0.8, 0.5], air: true, pose: 'ap' },
+  ak: { startup: 5, active: 10, recovery: 6, dmg: 9,  hitstun: 17, blockstun: 10, push: 0.12, stop: 7,  tier: 1, box: [0.65, 0, 0.9, 0.7], air: true, pose: 'ak' },
 };
+const moveOf = (f, key = f.move) => MOVES[key] ?? CHARS[f.ch].moves[key];
 
 function newFighter(ch, side) {
-  return { ch, x: side ? 2.5 : -2.5, y: 0, vx: 0, vy: 0, facing: side ? -1 : 1, hp: 100,
-           act: 'idle', frame: 0, move: null, hitDone: false, stun: 0, prev: 0, inp: 0, buf: 0, bufT: 0, combo: 0 };
+  return { id: side, ch, x: side ? 2.5 : -2.5, y: 0, vx: 0, vy: 0, facing: side ? -1 : 1, hp: 100, meter: 0,
+           act: 'idle', frame: 0, move: null, btn: 0, hitN: 0, last: 0, stun: 0, frz: 0, prev: 0, inp: 0, buf: 0, bufT: 0,
+           lrPress: 0, lrAge: 99, hist: [], combo: 0, comboDmg: 0 };
 }
 function newRound(s) {
-  s.f = s.chars.map(newFighter);
-  s.timer = ROUND_FRAMES; s.phase = 'ready'; s.phaseT = 90; s.hitstop = 0; s.koWinner = -1;
+  const meter = s.f?.map(f => f.meter) ?? [0, 0]; // 气槽跨回合保留
+  s.f = s.chars.map(newFighter); s.f.forEach((f, i) => { f.meter = meter[i]; });
+  s.proj = []; s.timer = ROUND_FRAMES; s.phase = 'ready'; s.phaseT = 90; s.hitstop = 0; s.koWinner = -1;
 }
 function newMatch(chars) {
-  const s = { chars, wins: [0, 0], round: 1, fx: [], frame: 0 };
+  const s = { chars, wins: [0, 0], round: 1, fx: [], frame: 0, pid: 0 };
   newRound(s);
   return s;
 }
 
 function setAct(f, a) { if (f.act !== a) { f.act = a; f.frame = 0; } }
 const clampX = f => { f.x = Math.max(-STAGE_HALF, Math.min(STAGE_HALF, f.x)); };
+const gain = (f, n) => { f.meter = Math.min(METER, f.meter + n); };
 
 // 输入缓冲：提前几帧按的攻击键会在能动的第一帧放出来，手感不"吞键"。
 // 定格（hitstop）期间也要记录按键、但不倒计时，连段就是在定格里按的。
 function readInput(f, inp, tick) {
   const press = inp & ~f.prev;
   f.prev = f.inp = inp;
-  if (press & (A | B)) { f.buf = press & (A | B); f.bufT = BUFFER; }
+  if (press & (A | B)) { f.buf = (f.bufT > BUFFER - 4 ? f.buf : 0) | press & (A | B); f.bufT = BUFFER; } // 3 帧内先后按的两个键算同时按
   else if (tick && f.bufT > 0 && --f.bufT === 0) f.buf = 0;
+  if (press & (L | R)) { f.lrPress = press & (L | R); f.lrAge = 0; } // 完美格挡看的是"刚按下后"多久
+  else if (tick) f.lrAge++;
+}
+
+// 搓招：方向按朝向记成 'D' 'DF' 'F' 'B' 'DB' ''，最后一步要正按着，前面每一步松开不超过 CMD 帧
+const dirOf = (inp, facing) => (inp & D ? 'D' : '') + (inp & (facing > 0 ? R : L) ? 'F' : inp & (facing > 0 ? L : R) ? 'B' : '');
+const QCF = [['D'], ['DF', 'F']], BF = [['B', 'DB'], ['F']];
+function motion(f, now, steps) {
+  const h = f.hist;
+  if (!steps.at(-1).includes(h.at(-1)?.[0])) return false;
+  for (let k = h.length - 2, i = steps.length - 2; k >= 0; k--) {
+    if (now - h[k + 1][1] > CMD) return false;
+    if (steps[i].includes(h[k][0]) && --i < 0) return true;
+  }
+  return false;
+}
+function command(s, f, ground, btn) {
+  if (!ground) return btn & A ? 'ap' : 'ak';
+  const ms = CHARS[f.ch].moves;
+  if ((btn & (A | B)) === (A | B) && f.meter >= METER) return 'su';
+  if (btn & A && motion(f, s.frame, QCF) && !(ms.s1.proj && s.proj.some(p => p.o === f.id))) return 's1'; // 飞行道具同时只能有一个
+  if (btn & B && motion(f, s.frame, BF)) return 's2';
+  return btn & A ? 'lp' : f.inp & D ? 'lk' : 'hp';
+}
+function startMove(s, f, key, btn) {
+  f.move = key; f.act = 'attack'; f.frame = 0; f.hitN = 0; f.btn = btn; f.buf = f.bufT = 0;
+  const m = moveOf(f);
+  if (f.y <= 0) f.vx = 0;
+  if (m.leap) { f.vy = m.leap[0]; f.vx = f.facing * m.leap[1]; }
+  if (m.super) { f.meter -= METER; s.hitstop = SUPER_FREEZE; s.fx.push({ t: 'super', who: f.id, name: m.name, col: CHARS[f.ch].col }); }
+  else s.fx.push({ t: 'swing' });
 }
 
 function control(s, f, inp) {
   readInput(f, inp, true);
   f.frame++;
-  const c = CHARS[f.ch], ground = f.y <= 0;
+  const c = CHARS[f.ch], ground = f.y <= 0, dir = dirOf(inp, f.facing);
+  if (dir !== f.hist.at(-1)?.[0]) { f.hist.push([dir, s.frame]); if (f.hist.length > 8) f.hist.shift(); }
   if (f.act === 'ko') return;
   if (f.act === 'hit' || f.act === 'block') {
     if (f.frame < f.stun) return;
-    f.act = 'idle'; f.frame = 0;
+    f.act = ground ? 'idle' : 'jump'; f.frame = 0; f.frz = 0;
   }
-  let cancel = false;
   if (f.act === 'attack') {
-    const m = MOVES[f.move];
-    cancel = f.move === 'lp' && f.hitDone && f.buf > 0; // 轻拳命中可取消 = 连段
-    if (!cancel && f.frame < m.startup + m.active + m.recovery) return;
-    if (!cancel) { f.act = ground ? 'idle' : 'jump'; f.frame = 0; }
+    const m = moveOf(f), t = f.frame, end = m.startup + m.active;
+    if (m.proj && t === m.startup + 1)
+      s.proj.push({ id: ++s.pid, o: f.id, k: f.move, x: f.x + f.facing * 0.6, y: f.y + m.proj.y, dir: f.facing, t: 0, hitN: 0, last: 0 });
+    if (m.dash && t <= end && !f.hitN) f.vx = f.facing * m.dash; // 突进类碰到人就停，不会穿过去
+    else if (ground) f.vx = 0;
+    if (f.buf) {
+      // 连段取消：打中/被挡后接更重的招；或者出招头 3 帧补按成必杀/大招（J 和 K 没按齐也认）
+      const key = command(s, f, ground, f.buf | (t <= 3 ? f.btn : 0)), n = moveOf(f, key);
+      const chain = f.hitN > 0 && !m.super && !n.air === !m.air && (n.tier > m.tier || (f.move === 'lp' && key === 'lp'));
+      const kara = t <= 3 && m.tier < 2 && n.tier >= 2;
+      if (chain || kara) return startMove(s, f, key, f.buf | f.btn);
+    }
+    if (t < end + m.recovery) {
+      // 收招后半段可以直接走/跳/蹲/防：移动优先，不会被自己的招式"粘住"
+      if (!(ground && m.tier < 2 && t > end + m.recovery / 2 && inp & (L | R | U | D))) return;
+    }
+    f.act = ground ? 'idle' : 'jump'; f.frame = 0;
   }
-  if (f.buf) {
-    f.move = !ground ? 'air' : (f.buf & A) && !(cancel && f.buf & B) ? 'lp' : 'hp';
-    f.act = 'attack'; f.frame = 0; f.hitDone = false; f.buf = f.bufT = 0;
-    if (ground) f.vx = 0;
-    s.fx.push({ t: 'swing' });
-    return;
-  }
-  if (!ground) return;
+  if (f.buf) return startMove(s, f, command(s, f, ground, f.buf), f.buf);
   const h = (inp & R ? 1 : 0) - (inp & L ? 1 : 0);
-  if (inp & U) { setAct(f, 'jump'); f.vy = 0.25; f.vx = h * 0.075 * c.speed; }
+  if (!ground) { if (f.act === 'jump') f.vx += (h * 0.085 * c.speed - f.vx) * 0.06; return; } // 空中能稍微改方向
+  if (inp & U) { setAct(f, 'jump'); f.vy = JUMP_V; f.vx = h * 0.085 * c.speed; }
   else if (inp & D) { setAct(f, 'crouch'); f.vx = 0; }
-  else if (h) { setAct(f, 'walk'); f.vx = h * (h === f.facing ? 0.065 : 0.045) * c.speed; }
+  else if (h) { setAct(f, 'walk'); f.vx = h * (h === f.facing ? 0.072 : 0.055) * c.speed; }
   else { setAct(f, 'idle'); f.vx = 0; }
 }
 
-function physics(f) {
-  if (f.act === 'hit' || f.act === 'block' || (f.act === 'ko' && f.y === 0)) f.vx *= 0.85;
+function physics(s, f) {
+  if (f.act === 'hit' || f.act === 'block' || (f.act === 'ko' && f.y === 0)) f.vx *= 0.78;
   f.x += f.vx;
   if (f.y > 0 || f.vy > 0) {
     f.vy -= GRAV; f.y += f.vy;
     if (f.y <= 0) {
       f.y = 0; f.vy = 0;
-      if (f.act === 'jump' || (f.act === 'attack' && f.move === 'air')) setAct(f, 'idle');
+      const m = f.act === 'attack' && moveOf(f);
+      if (f.act === 'jump' || m.air) { setAct(f, 'idle'); f.vx = 0; }
+      else if (m.leap) { f.frame = m.startup + m.active; f.vx = 0; if (m.super) s.fx.push({ t: 'quake' }); } // 落地进收招
     }
   }
   clampX(f);
@@ -267,34 +388,73 @@ function separate(a, b) {
   if (o > 0) { if (Math.abs(a.x) >= STAGE_HALF) b.x += d * o; else a.x -= d * o; }
 }
 
+// 受击框：站着 2.0 高，蹲着（含蹲防、下段踢）1.3 高
+function overlap(cx, y0, w, h, def) {
+  const low = def.y === 0 && (def.act === 'crouch' || (def.act === 'block' && def.inp & D) || (def.act === 'attack' && def.move === 'lk'));
+  return Math.abs(cx - def.x) < w / 2 + 0.38 && y0 < def.y + (low ? 1.3 : 2.0) && y0 + h > def.y;
+}
+const invuln = f => f.act === 'ko' || (f.act === 'attack' && moveOf(f).super && f.frame <= moveOf(f).startup); // 大招起手无敌
 function hits(att, def) {
-  if (att.act !== 'attack' || att.hitDone || def.act === 'ko') return null;
-  const m = MOVES[att.move], t = att.frame;
-  if (t <= m.startup || t > m.startup + m.active) return null;
-  const [ox, oy, w, h] = m.box, cx = att.x + att.facing * ox;
-  const low = def.y === 0 && (def.act === 'crouch' || (def.act === 'block' && def.inp & D));
-  const top = def.y + (low ? 1.3 : 2.0), y0 = att.y + oy;
-  return Math.abs(cx - def.x) < w / 2 + 0.38 && y0 < top && y0 + h > def.y ? m : null;
+  if (att.act !== 'attack' || invuln(def)) return null;
+  const m = moveOf(att), t = att.frame;
+  if (!m.box || t <= m.startup || t > m.startup + m.active || (m.leap && att.y <= 0)) return null;
+  if (att.hitN >= (m.hits ?? 1) || (att.hitN && t < att.last + m.every)) return null;
+  const [ox, oy, w, h] = m.box;
+  return overlap(att.x + att.facing * ox, att.y + oy, w, h, def) ? m : null;
 }
 
-function applyHit(s, att, def, m) {
-  att.hitDone = true;
-  const away = def.x >= att.x ? R : L;
-  const blocking = def.y === 0 && ['idle', 'walk', 'crouch', 'block'].includes(def.act) && (def.inp & away);
-  const fx = { who: s.f.indexOf(def), dir: att.facing, x: def.x - att.facing * 0.3, y: att.y + m.box[1] + m.box[3] / 2, big: m === MOVES.hp };
+// src = 打过来的位置 {x, y, fin: 是不是最后一段, proj}；推开方向按"从哪边打来"算，所以绕身判定前后都对
+function applyHit(s, att, def, m, src) {
+  if (!src.proj) { att.hitN++; att.last = att.frame; }
+  const dir = def.x >= src.x ? 1 : -1, away = dir > 0 ? R : L, crouch = def.inp & D;
+  const guard = def.y === 0 && ['idle', 'walk', 'crouch', 'block'].includes(def.act) && def.inp & away
+    && !(m.guard === 'low' && !crouch) && !(m.guard === 'high' && crouch);
+  const fx = { who: def.id, dir, x: def.x - dir * 0.3, y: Math.min(src.y, def.y + 1.7), col: m.tier >= 2 ? CHARS[att.ch].col : null };
   def.frame = 0;
-  if (blocking) {
-    def.act = 'block'; def.stun = m.blockstun; def.vx = att.facing * m.push * 0.8;
-    s.hitstop = 4; s.fx.push({ t: 'block', ...fx });
+  if (guard && def.lrPress & away && def.lrAge <= PARRY) { // 完美格挡：不掉血、自己马上能动、近身招的对手被弹开
+    def.act = 'block'; def.stun = 3; def.vx = 0; gain(def, 12);
+    if (!src.proj && !m.super) { att.act = 'hit'; att.frame = 0; att.stun = 24; att.vx = -dir * 0.05; att.combo = 0; }
+    s.hitstop = 14; s.fx.push({ t: 'parry', ...fx });
+    return;
+  }
+  if (guard) {
+    const chip = m.super ? Math.ceil(m.dmg * 0.25) : 0; // 大招挡住也掉一点，但磨不死人
+    def.hp = Math.max(Math.min(def.hp, 1), def.hp - chip);
+    def.act = 'block'; def.stun = m.blockstun; def.vx = dir * m.push * 0.8;
+    gain(att, 2); gain(def, 4);
+    s.hitstop = 4; s.fx.push({ t: 'block', dmg: chip, ...fx });
     return;
   }
   def.combo = def.act === 'hit' ? def.combo + 1 : 1;
-  def.hp = Math.max(0, def.hp - Math.round(m.dmg * CHARS[att.ch].power));
-  def.act = 'hit'; def.stun = m.hitstun; def.vx = att.facing * m.push;
-  if (def.y > 0) def.vy = 0.12;
-  if (def.hp === 0) { def.act = 'ko'; def.vy = 0.22; def.vx = att.facing * 0.14; }
-  s.hitstop = def.hp === 0 ? 20 : m.stop;
-  s.fx.push({ t: 'hit', ko: def.hp === 0, ...fx });
+  const scale = Math.max(0.5, 1 - 0.1 * Math.max(0, def.combo - 3)); // 连段第 4 下起伤害递减，防止一套秒人
+  const dmg = Math.max(1, Math.round(m.dmg * CHARS[att.ch].power * scale)), multi = (m.hits ?? 1) > 1;
+  def.hp = Math.max(0, def.hp - dmg); def.comboDmg = (def.combo > 1 ? def.comboDmg : 0) + dmg;
+  def.act = 'hit'; def.stun = m.freeze ?? m.hitstun; def.frz = m.freeze ? 1 : 0; def.vx = dir * m.push;
+  const lift = src.fin && m.launch ? m.launch : def.y > 0 ? 0.12 : 0;
+  if (lift) def.vy = lift;
+  gain(att, dmg); gain(def, dmg * 0.6);
+  if (def.hp === 0) { def.act = 'ko'; def.vy = 0.22; def.vx = dir * 0.14; }
+  s.hitstop = def.hp === 0 ? 24 : multi && src.fin ? 16 : m.stop;
+  s.fx.push({ t: 'hit', ko: def.hp === 0, dmg, big: dmg >= 10 || (multi && src.fin), sup: !!m.super, frz: !!m.freeze, ...fx });
+}
+
+function updateProj(s) {
+  s.proj = s.proj.filter(p => {
+    const att = s.f[p.o], def = s.f[1 - p.o], m = moveOf(att, p.k), q = m.proj, n = m.hits ?? 1;
+    p.x += p.dir * q.speed; p.t++;
+    if (p.t > q.life || Math.abs(p.x) > STAGE_HALF + 2) return false;
+    if ((!p.hitN || p.t >= p.last + m.every) && !invuln(def) && overlap(p.x, p.y, q.w, q.h, def)) {
+      p.hitN++; p.last = p.t;
+      applyHit(s, att, def, m, { x: p.x - p.dir, y: p.y + q.h / 2, fin: p.hitN >= n, proj: true });
+      return p.hitN < n;
+    }
+    return true;
+  });
+  const [a, b] = [0, 1].map(o => s.proj.find(p => p.o === o)); // 两边的飞行道具撞上就一起消掉
+  if (a && b && Math.abs(a.x - b.x) < 0.6 && Math.abs(a.y - b.y) < 1) {
+    s.proj = s.proj.filter(p => p !== a && p !== b);
+    s.fx.push({ t: 'clash', x: (a.x + b.x) / 2, y: a.y + 0.4, dir: 1 });
+  }
 }
 
 function finishRound(s, winner) {
@@ -317,13 +477,15 @@ function step(s, inputs) {
   }
   const [a, b] = s.f;
   control(s, a, inputs[0]); control(s, b, inputs[1]);
-  physics(a); physics(b);
+  physics(s, a); physics(s, b);
   for (const [f, o] of [[a, b], [b, a]])
     if (f.y === 0 && ['idle', 'walk', 'crouch'].includes(f.act)) f.facing = o.x > f.x ? 1 : o.x < f.x ? -1 : f.facing;
   separate(a, b);
   const ha = hits(a, b), hb = hits(b, a); // 先都判定再结算，互殴时双方都吃到
-  if (ha) applyHit(s, a, b, ha);
-  if (hb) applyHit(s, b, a, hb);
+  const src = (f, m) => ({ x: f.x, y: f.y + m.box[1] + m.box[3] / 2, fin: f.hitN + 1 >= (m.hits ?? 1) });
+  if (ha) applyHit(s, a, b, ha, src(a, ha));
+  if (hb) applyHit(s, b, a, hb, src(b, hb));
+  updateProj(s);
   if (s.phase === 'fight' && (a.hp === 0 || b.hp === 0))
     finishRound(s, a.hp === 0 && b.hp === 0 ? -1 : a.hp === 0 ? 1 : 0);
 }
@@ -361,21 +523,26 @@ function input1P(s) {
   return k;
 }
 
-const ai = { t: 0, k: 0, guard: false };
+// 电脑：每隔一小段随机定一个意图；搓招用 seq 一帧一帧把方向和按键喂进去
+const ai = { t: 0, k: 0, seq: [] };
 function cpu(s, me) {
   const f = s.f[me], o = s.f[1 - me], dist = Math.abs(o.x - f.x);
   const toward = o.x > f.x ? R : L, away = o.x > f.x ? L : R;
-  if (ai.guard && o.act === 'attack' && dist < 2) return away;
-  if (f.act === 'attack' && f.hitDone && f.move === 'lp' && Math.random() < 0.1) return B; // 偶尔连段
+  if (ai.seq.length) return ai.seq.shift();
+  if (f.act === 'attack' && f.hitN && Math.random() < 0.12) // 偶尔连段：轻拳接重脚，能接大招就接
+    return f.meter >= METER ? A | B : f.move === 'lp' ? B : 0;
   if (--ai.t > 0) return ai.k;
   const r = Math.random();
-  ai.guard = Math.random() < 0.5; ai.t = 6 + (Math.random() * 14 | 0);
-  if (dist > 1.4) ai.k = r < 0.08 ? toward | U : toward;
-  else if (r < 0.35) { ai.k = A; ai.t = 3; }
-  else if (r < 0.55) { ai.k = B; ai.t = 3; }
-  else if (r < 0.75) ai.k = away;
-  else if (r < 0.85) ai.k = away | D;
-  else ai.k = 0;
+  ai.t = 6 + (Math.random() * 14 | 0); ai.k = 0;
+  if (f.meter >= METER && dist < 2.5 && r < 0.3) ai.seq = [A | B, 0];
+  else if (dist > 3 && r < 0.12) ai.seq = [D, D, D | toward, toward, toward | A, 0];
+  else if (dist > 1.6) ai.k = r < 0.1 ? toward | U : toward;
+  else if (r < 0.22) { ai.k = A; ai.t = 3; }
+  else if (r < 0.34) { ai.k = B; ai.t = 3; }
+  else if (r < 0.44) { ai.k = D | B; ai.t = 3; }
+  else if (r < 0.52) ai.seq = [away, away, toward, toward | B, 0];
+  else if (r < 0.7) ai.k = away;     // 站防
+  else if (r < 0.86) ai.k = away | D; // 蹲防
   return ai.k;
 }
 
@@ -408,6 +575,13 @@ function sfx(kind) {
     o.frequency.setValueAtTime(thump, t); o.frequency.exponentialRampToValueAtTime(thump * 0.35, t + dur);
     o.connect(g); o.start(t); o.stop(t + dur + 0.08);
   }
+}
+function tone(f0, f1, dur, vol, type) { // 完美格挡的"叮"、大招蓄力的上扬音
+  if (!actx) return;
+  const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
 }
 
 // ============ 表情包脸（canvas 画贴纸，模型和选人卡共用）============
@@ -555,6 +729,7 @@ const faces = CHARS.map(c => c.face && sticker(c.face, '#' + c.skin.toString(16)
 const ANIMALS = {
   husky:   { file: 'assets/husky.json', tex: 'assets/husky.jpg', scale: 2.4 },
   penguin: { file: 'assets/penguin.json', tex: 'assets/penguin.jpg', scale: 2.4 },
+  blob:    { file: 'assets/blob.json', tex: 'assets/blob.jpg', scale: 2.4 },
 };
 const CLIP_FILES = ['assets/anims_a.json', 'assets/anims_b.json'];
 // Artifact 页面只放行同目录文件的相对路径 fetch，data: / blob: 请求会被 CSP 静默拦掉，
@@ -603,19 +778,32 @@ const loadAnimal = key => animals[key] ??= Promise.all([loadTex(ANIMALS[key].tex
 // 选人页一打开就在后台下（约 3MB），等点 FIGHT 的时候通常已经好了
 for (const k in ANIMALS) loadAnimal(k).catch(() => {});
 
-// 每个招式在动画片段里截一段：出招帧从 a0 播到 a1（打到最远），判定帧停在 hold，收招帧播到 end。
-// 时间点是在浏览器里逐帧量手/脚骨骼位置找出来的。
-const ANIM_MOVES = {
-  lp:  { clip: 'box_01', a0: 0.33, a1: 0.6, hold: 0.67, end: 1.0 },
-  hp:  { clip: 'front_kick_01', a0: 0.45, a1: 1.13, hold: 1.2, end: 1.8 },
-  air: { clip: 'front_kick_01', a0: 0.85, a1: 1.13, hold: 1.2, end: 1.4 },
+// 招式姿势。动物角色在动画片段里截一段：a = [出招起点, 打到最远, 判定停住, 收招终点]（秒），
+// 时间点是在浏览器里逐帧量手/脚骨骼位置找出来的；cycle = 判定期间在 a1~a2 之间来回（连打）。
+// box = 方块角色用哪套手脚姿势。lean 前倾（弧度）、drop 下沉、grow 变大、spin 原地转几圈、roll 前滚几圈：两种角色共用，整体套在外层
+const POSES = {
+  lp:       { clip: 'box_01', a: [0.33, 0.6, 0.67, 1.0], box: 'lp' },
+  hp:       { clip: 'front_kick_01', a: [0.45, 1.13, 1.2, 1.8], box: 'hp', yaw: -1.0 },
+  lk:       { clip: 'front_kick_01', a: [0.45, 0.7, 0.76, 1.0], box: 'lk', lean: 0.3, drop: 0.15, yaw: -1.3 }, // 原片段踢腿会转身背对镜头，转回来
+  ap:       { clip: 'box_01', a: [0.4, 0.6, 0.67, 0.9], box: 'ap' },
+  ak:       { clip: 'front_kick_01', a: [0.85, 1.13, 1.2, 1.4], box: 'ak', yaw: -1.0 },
+  throw:    { clip: 'box_02', a: [0.5, 0.9, 1.0, 1.3], box: 'push' },  // 双手往前推：放飞行道具
+  belly:    { clip: 'box_02', a: [0.5, 0.9, 1.0, 1.3], box: 'push', lean: -0.3, grow: 0.15 },
+  headbutt: { clip: 'box_02', a: [0.5, 0.9, 1.0, 1.3], box: 'push', lean: 0.7 },
+  flurry:   { clip: 'box_01', a: [0.33, 0.45, 0.67, 1.0], box: 'lp', cycle: true },
+  spin:     { clip: 'front_kick_01', a: [0.45, 1.13, 1.2, 1.8], box: 'hp', spin: 1 },
+  slide:    { clip: 'box_02', a: [0.05, 0.05, 0.05, 0.05], box: 'crouch', lean: 1.15, drop: -0.15 }, // 趴平了肚子比胯还厚，要往上抬
+  roll:     { clip: 'box_02', a: [0.05, 0.05, 0.05, 0.05], box: 'crouch', roll: 4, drop: 0.2, grow: 0.25 },
+  slam:     { clip: 'jump', a: [0.6, 0.78, 0.78, 1.0], box: 'ak', lean: 0.9 },
+  roar:     { clip: 'victory_celebration', a: [0.57, 1.0, 1.14, 1.3], box: 'roar' },
 };
+const WALK_STRIDE = 3.3; // 走路片段一个循环走多远（胯高的倍数）：动画按实际走过的距离推进，脚就不打滑
 
 function buildAnimal(asset) {
-  const root = new THREE.Group(), body = new THREE.Group(), model = cloneSkinned(asset.scene);
+  const root = new THREE.Group(), lean = new THREE.Group(), body = new THREE.Group(), model = cloneSkinned(asset.scene);
   body.rotation.y = -0.65; // 和方块角色一样侧身朝镜头
   model.scale.setScalar(asset.scale);
-  root.add(body); body.add(model);
+  root.add(lean); lean.add(body); body.add(model);
   const mats = [], skins = [];
   model.traverse(o => { if (o.isSkinnedMesh) skins.push(o); });
   for (const o of skins) {
@@ -633,7 +821,8 @@ function buildAnimal(asset) {
   acts.idle.play(); mixer.update(0); model.updateMatrixWorld(true);
   const hip = model.getObjectByName('Hip').getWorldPosition(new THREE.Vector3());
   model.position.x -= hip.x; model.position.z -= hip.z;
-  return { root, body, model, mixer, acts, cur: acts.idle, clock: 0, flash: 0, mats };
+  lean.position.y = hip.y; body.position.y = -hip.y; // 前倾/翻滚绕胯转
+  return { root, lean, body, model, mixer, acts, cur: acts.idle, clock: 0, flash: 0, mats, hipH: hip.y, stride: 0, px: 0 };
 }
 
 function disposeView(v) {
@@ -664,7 +853,7 @@ function buildFighter(ch, assets) {
   const pivot = (parent, x, y, z) => { const p = new THREE.Group(); p.position.set(x, y, z); parent.add(p); return p; };
   const mBody = mat(c.body), mLeg = mat(c.leg), mSkin = mat(c.skin), mDark = mat(0x16131c);
 
-  const root = new THREE.Group(), body = pivot(root, 0, 0, 0);
+  const root = new THREE.Group(), lean = pivot(root, 0, 0.82, 0), body = pivot(lean, 0, -0.82, 0);
   body.rotation.y = -0.65; // 侧身朝镜头，让脸能被看到
   const hip = pivot(body, 0, 0.82, 0);
   part(new THREE.BoxGeometry(0.62, 0.72, 0.4), mBody, hip, 0, 0.38, 0);
@@ -700,32 +889,40 @@ function buildFighter(ch, assets) {
     return { upper, lower };
   };
   return {
-    root, body, hip, head, flash: 0, mats: [mBody, mLeg, mSkin, mDark],
+    root, lean, body, hip, head, flash: 0, hipH: 0.82, mats: [mBody, mLeg, mSkin, mDark],
     armF: limb(0.66, 0.4, 0.17, 0.62, mBody, mSkin), armB: limb(0.66, -0.4, 0.17, 0.62, mBody, mSkin),
     legF: limb(0, 0.16, 0.22, 0.8, mLeg, mDark, true), legB: limb(0, -0.16, 0.22, 0.8, mLeg, mDark, true),
   };
 }
 
+// 招式进行到哪：0 出招 / 1 判定 / 2 收招，以及这一段里的进度 0~1
+function phaseOf(m, k) {
+  const a = m.startup, b = a + m.active;
+  return k <= a ? [0, k / a] : k <= b ? [1, (k - a) / m.active] : [2, Math.min(1, (k - b) / m.recovery)];
+}
+
 // 动物角色：act → 动画片段，模拟帧 → 片段时间（所以定格、连段取消都和判定严格同步），切片段时交叉淡入。
 // Tripo 的动作库里没有格挡和下蹲：格挡用拳击起手的护脸架势（box_01 开头），下蹲用 box_02 开头的低身下潜。
-function poseAnimal(v, f, dt, won) {
+function poseAnimal(v, f, pos, dt, won) {
   v.clock += dt;
   const loop = (name, speed = 1) => { const d = v.acts[name].getClip().duration; return [name, (v.clock * speed % d + d) % d]; };
   const span = (a, b, p) => a + (b - a) * Math.min(1, Math.max(0, p));
-  let [name, t] = loop('idle'), fade = 0.15;
+  let [name, t] = loop('idle'), fade = 0.08;
   switch (f.act) {
-    case 'walk': [name, t] = loop('walk', f.vx * f.facing < 0 ? -1.3 : 1.6); break; // 后退就倒着播
-    case 'jump': name = 'jump'; t = span(0.4, 0.87, f.frame / 36); fade = 0.08; break; // 片段里一次起跳落地约 0.47 秒，拉到滞空 36 帧
-    case 'crouch': name = 'box_02'; t = 0.05; fade = 0.08; break;
+    case 'walk': { // 按走过的距离推进片段（后退就倒着播），脚步和位移对得上
+      v.stride += (pos.x - v.px) * f.facing;
+      const d = v.acts.walk.getClip().duration, c = v.stride / (WALK_STRIDE * v.hipH);
+      name = 'walk'; t = (c % 1 + 1) % 1 * d; fade = 0.06; break;
+    }
+    case 'jump': name = 'jump'; t = span(0.4, 0.87, f.frame / JUMP_FRAMES); break; // 片段里一次起跳落地约 0.47 秒，拉到整个滞空
+    case 'crouch': name = 'box_02'; t = 0.05; fade = 0.06; break;
     case 'block': [name, t] = f.inp & D ? ['box_02', 0.05] : ['box_01', 0.1]; fade = 0.05; break;
     case 'hit': name = 'hit_to_head'; t = span(0.1, 1.0, f.frame / f.stun); fade = 0.04; break;
     case 'ko': [name, t] = loop('hurt'); fade = 0.3; break;
     case 'attack': {
-      const m = MOVES[f.move], h = ANIM_MOVES[f.move], k = f.frame;
-      name = h.clip; fade = 0.05;
-      t = k <= m.startup ? span(h.a0, h.a1, k / m.startup)
-        : k <= m.startup + m.active ? span(h.a1, h.hold, (k - m.startup) / m.active)
-        : span(h.hold, h.end, (k - m.startup - m.active) / m.recovery);
+      const m = moveOf(f), P = POSES[m.pose], [seg, p] = phaseOf(m, f.frame), [a0, a1, a2, a3] = P.a;
+      name = P.clip; fade = 0.05;
+      t = seg === 0 ? span(a0, a1, p) : seg === 1 ? span(a1, a2, P.cycle ? Math.abs(f.frame % 8 / 4 - 1) : p) : span(a2, a3, p);
     }
   }
   if (won && f.act === 'idle') [name, t] = loop('victory_celebration');
@@ -735,21 +932,34 @@ function poseAnimal(v, f, dt, won) {
   v.mixer.update(dt);
 }
 
+// 两种角色共用的整体动作：前倾、下沉、变大、转身、原地转、前滚（套在 lean 这层，绕胯转）
+function leanPose(v, f) {
+  let lean = 0, drop = 0, grow = 0, spin = 0, roll = 0, yaw = 0;
+  if (f.act === 'attack') {
+    const m = moveOf(f), P = POSES[m.pose], [seg, p] = phaseOf(m, f.frame), act = m.startup + m.active;
+    const env = seg === 0 ? p : seg === 1 ? 1 : Math.max(0, 1 - (f.frame - act) / Math.min(m.recovery, 10));
+    lean = (P.lean ?? 0) * env; drop = (P.drop ?? 0) * env; grow = (P.grow ?? 0) * env; yaw = (P.yaw ?? 0) * env;
+    if (P.spin && seg === 1) spin = p * P.spin * Math.PI * 2;
+    if (P.roll && seg < 2) roll = -f.frame / act * P.roll * Math.PI * 2;
+  }
+  v.lean.rotation.set(0, spin + yaw, roll || -lean, 'ZYX'); // 前倾/前滚在最外层，转身后也是朝对手倒
+  v.lean.position.y = v.hipH - drop; v.lean.scale.setScalar(1 + grow);
+}
+
 // 方块角色：姿势由 (act, frame) 算出目标角度，再平滑过渡过去；出招判定帧直接到位（快出慢收）。
 // 角度约定：rotation.z 为正 = 往身前摆；小臂为正 = 弯肘，小腿为负 = 屈膝。
 function pose(v, f, pos, now, dt, hitstop, won) {
-  if (v.mixer) {
-    poseAnimal(v, f, dt, won);
-    const jitter = hitstop && ['hit', 'block', 'ko'].includes(f.act) ? Math.sin(now * 0.9) * 0.05 : 0;
-    v.root.position.set(pos.x + jitter, pos.y, 0);
-    v.root.scale.x = f.facing;
-    v.flash = Math.max(0, v.flash - dt * 7);
-    for (const m of v.mats) m.emissive.setScalar(v.flash * 0.8);
-    return;
-  }
+  const jitter = hitstop && ['hit', 'block', 'ko'].includes(f.act) ? Math.sin(now * 0.9) * 0.05 : 0; // 定格时挨打的人抖
+  v.root.position.set(pos.x + jitter, pos.y, 0);
+  v.root.scale.x = f.facing;
+  leanPose(v, f);
+  v.flash = Math.max(0, v.flash - dt * 7);
+  for (const m of v.mats) f.frz && f.act === 'hit' ? m.emissive.setRGB(0.15, 0.45, 0.8) : m.emissive.setScalar(v.flash * 0.8); // 冰冻是蓝的
+  if (v.mixer) { poseAnimal(v, f, pos, dt, won); v.px = pos.x; return; }
   const T = { aF: [1.0, 1.3], aB: [0.7, 1.6], lF: [0.35, -0.35], lB: [-0.25, -0.2], hipY: 0.82, hipZ: 0, hipT: 0, headZ: 0, bodyZ: 0 };
   let rate = 18;
   const bob = Math.sin(now / 170) * 0.025;
+  const CROUCH = () => { T.hipY = 0.5; T.lF = [1.3, -2.0]; T.lB = [0.4, -1.6]; T.aF = [1.3, 1.4]; T.aB = [1.0, 1.7]; T.hipZ = -0.15; };
   switch (f.act) {
     case 'idle': T.hipY += bob - 0.02; T.lF[1] -= bob * 4; T.lB[1] -= bob * 4; T.aF[0] += bob * 2; break;
     case 'walk': {
@@ -757,38 +967,45 @@ function pose(v, f, pos, now, dt, hitstop, won) {
       T.lF = [0.15 + s * 0.5, -0.2 - Math.max(0, s) * 0.7]; T.lB = [0.15 - s * 0.5, -0.2 - Math.max(0, -s) * 0.7];
       T.hipY += Math.abs(s) * 0.03 - 0.03; rate = 30; break;
     }
-    case 'crouch': T.hipY = 0.5; T.lF = [1.3, -2.0]; T.lB = [0.4, -1.6]; T.aF = [1.3, 1.4]; T.aB = [1.0, 1.7]; T.hipZ = -0.15; rate = 30; break;
+    case 'crouch': CROUCH(); rate = 30; break;
     case 'jump': T.lF = [1.4, -2.0]; T.lB = [0.6, -1.5]; T.aF = [2.0, 0.8]; T.aB = [1.6, 1.0]; break;
     case 'block': T.hipY -= 0.08; T.aF = [1.5, 2.3]; T.aB = [1.3, 2.4]; T.hipZ = 0.12; T.lF = [0.5, -0.6]; T.lB = [-0.2, -0.5]; rate = 40; break;
     case 'hit': T.hipZ = 0.45; T.headZ = 0.5; T.aF = [-0.4, 0.4]; T.aB = [2.2, 0.6]; T.lF = [0.7, -0.6]; rate = 40; break;
     case 'ko': T.bodyZ = 1.45; T.aF = [2.8, 0.3]; T.aB = [2.5, 0.5]; T.lF = [0.5, -0.3]; T.lB = [0.2, -0.2]; rate = 8; break;
     case 'attack': {
-      const m = MOVES[f.move], t = f.frame, a = m.startup, b = a + m.active;
+      const m = moveOf(f), P = POSES[m.pose], t = f.frame, a = m.startup, b = a + m.active;
       const wind = Math.min(t / a, 1), back = t <= b ? 1 : Math.max(0, 1 - (t - b) / m.recovery);
       rate = t <= a ? 30 : t <= b ? Infinity : 14;
-      if (f.move === 'lp') {
-        T.aF = t <= a ? [1.0 - wind * 0.4, 1.3 + wind * 0.6] : [1.0 + back * 0.62, 1.3 - back * 1.25];
-        T.hipT = t <= a ? -wind * 0.2 : back * 0.45;
-      } else if (f.move === 'hp') {
-        T.lF = t <= a ? [0.35 + wind * 0.8, -0.35 - wind * 1.6] : [0.35 + back * 1.25, -0.35 + back * 0.3];
-        T.hipZ = (t <= a ? wind : back) * 0.35; T.aF = [0.5, 1.6]; T.aB = [0.3, 1.2]; T.lB = [-0.2, -0.15];
-      } else {
-        T.lF = [0.6 + back * 0.8, -1.8 + back * 1.75]; T.lB = [0.8, -1.8]; T.aF = [2.2, 0.6]; T.aB = [1.8, 0.8];
+      switch (P.box) {
+        case 'lp': case 'ap':
+          T.aF = t <= a ? [1.0 - wind * 0.4, 1.3 + wind * 0.6] : [1.0 + back * 0.62, 1.3 - back * 1.25];
+          T.hipT = t <= a ? -wind * 0.2 : back * 0.45;
+          if (P.cycle && t > a && t <= b && (t >> 2) & 1) { T.aB = T.aF; T.aF = [0.7, 1.6]; T.hipT = -0.3; } // 左右手轮流
+          if (P.box === 'ap') { T.lF = [1.4, -2.0]; T.lB = [0.6, -1.5]; }
+          break;
+        case 'push': T.aF = T.aB = t <= a ? [0.6, 2.0] : [0.6 + back * 1.0, 2.0 - back * 1.9]; T.hipT = 0.2; break;
+        case 'hp':
+          T.lF = t <= a ? [0.35 + wind * 0.8, -0.35 - wind * 1.6] : [0.35 + back * 1.25, -0.35 + back * 0.3];
+          T.hipZ = (t <= a ? wind : back) * 0.35; T.aF = [0.5, 1.6]; T.aB = [0.3, 1.2]; T.lB = [-0.2, -0.15];
+          break;
+        case 'lk': // 下段踢：身子压低，前脚贴地往前铲
+          T.hipY = 0.82 - 0.22 * (t <= a ? wind : back);
+          T.lF = t <= a ? [wind * 0.6, -wind * 1.2] : [0.6 + back * 0.65, -1.2 + back * 1.1];
+          T.lB = [-0.3, -1.3]; T.aF = [0.8, 1.6]; T.aB = [0.5, 1.4];
+          break;
+        case 'crouch': CROUCH(); break;
+        case 'roar': T.aF = [2.8, 0.3]; T.aB = [2.6, 0.4]; T.headZ = -0.4; break;
+        default: T.lF = [0.6 + back * 0.8, -1.8 + back * 1.75]; T.lB = [0.8, -1.8]; T.aF = [2.2, 0.6]; T.aB = [1.8, 0.8]; // ak 空中踢
       }
     }
   }
   const k = rate === Infinity ? 1 : 1 - Math.exp(-rate * dt);
   const d = (o, p, val) => { o[p] += (val - o[p]) * k; };
-  const jitter = hitstop && ['hit', 'block', 'ko'].includes(f.act) ? Math.sin(now * 0.9) * 0.05 : 0; // 定格时挨打的人抖
-  v.root.position.set(pos.x + jitter, pos.y, 0);
-  v.root.scale.x = f.facing;
   for (const [l, [u, lo]] of [[v.armF, T.aF], [v.armB, T.aB], [v.legF, T.lF], [v.legB, T.lB]]) {
     d(l.upper.rotation, 'z', u); d(l.lower.rotation, 'z', lo);
   }
   d(v.hip.position, 'y', T.hipY); d(v.hip.rotation, 'z', T.hipZ); d(v.hip.rotation, 'y', T.hipT);
   d(v.head.rotation, 'z', T.headZ); d(v.body.rotation, 'z', T.bodyZ);
-  v.flash = Math.max(0, v.flash - dt * 7);
-  for (const m of v.mats) m.emissive.setScalar(v.flash * 0.8);
 }
 
 // 打击反馈：音效 + 受击闪白 + 火花 + 震屏 + 重击镜头推近
@@ -802,37 +1019,76 @@ const BURST = (() => { // 爆炸形气泡：长短交替的 28 个顶点
   return `<svg viewBox="-55 -42 110 84" aria-hidden="true"><polygon points="${pts.join(' ')}"/></svg>`;
 })();
 const projV = new THREE.Vector3();
-function pow(fx) {
-  projV.set(fx.x - fx.dir * 0.3, fx.y + 1.1, 0).project(camera); // 放在头顶偏后，别挡住脸
-  const el = document.createElement('div');
-  el.className = 'pow' + (fx.t === 'block' ? ' block' : fx.big || fx.ko ? ' big' : '');
-  el.innerHTML = BURST + `<b>${fx.t === 'block' ? 'BLOCK!' : fx.ko ? 'K.O.!!' : POW_WORDS[Math.random() * POW_WORDS.length | 0]}</b>`;
+// 3D 位置 → 屏幕像素，给 DOM 特效（气泡、伤害数字）定位用
+function toScreen(el, x, y) {
+  projV.set(x, y, 0).project(camera);
   el.style.setProperty('--x', `${(projV.x + 1) / 2 * innerWidth}px`);
   el.style.setProperty('--y', `${(1 - projV.y) / 2 * innerHeight}px`);
   el.addEventListener('animationend', () => el.remove());
   document.body.appendChild(el);
 }
-function onFx(fx) {
-  if (fx.t === 'swing') return sfx('swing');
-  pow(fx);
-  const block = fx.t === 'block', col = block ? 0xffffff : 0xffd60a;
-  sfx(block ? 'block' : fx.ko ? 'ko' : fx.big ? 'heavy' : 'hit');
-  if (!block) views[fx.who].flash = 1;
-  const n = block ? 6 : fx.ko ? 24 : fx.big ? 16 : 10;
+function pow(fx, word, cls) {
+  const el = document.createElement('div');
+  el.className = 'pow ' + cls;
+  el.innerHTML = BURST + `<b>${word}</b>`;
+  toScreen(el, fx.x - fx.dir * 0.3, fx.y + 1.1); // 放在头顶偏后，别挡住脸
+}
+// 伤害跳字：越疼字越大，重击白字、大招红字，往被打的方向飘
+function dmgPop(fx) {
+  const el = document.createElement('div');
+  el.className = 'dmg' + (fx.sup ? ' sup' : fx.big || fx.ko ? ' big' : fx.t === 'block' ? ' chip' : '');
+  el.textContent = fx.dmg;
+  el.style.setProperty('--s', `${Math.min(64, 22 + fx.dmg * 2)}px`);
+  el.style.setProperty('--dx', `${fx.dir * (18 + Math.random() * 22)}px`);
+  toScreen(el, fx.x + fx.dir * 0.2, fx.y + 0.5 + Math.random() * 0.3);
+}
+function burstFx(fx, col, n, ringGrow) {
   for (let i = 0; i < n; i++) {
     const m = new THREE.Mesh(streakGeo, new THREE.MeshBasicMaterial({ color: i % 3 ? col : INK, transparent: true })); // 掺几道黑线，像漫画速度线
-    const a = block ? Math.random() * Math.PI * 2 : (fx.dir > 0 ? 0 : Math.PI) + (Math.random() - 0.5) * 2.4; // 火花顺着出拳方向喷
+    const a = fx.t !== 'hit' ? Math.random() * Math.PI * 2 : (fx.dir > 0 ? 0 : Math.PI) + (Math.random() - 0.5) * 2.4; // 火花顺着出拳方向喷
     const sp = 0.08 + Math.random() * 0.14;
     m.position.set(fx.x, fx.y, 0.4); m.rotation.z = a;
     m.userData = { v: new THREE.Vector3(Math.cos(a) * sp, Math.sin(a) * sp, 0), life: 16, grow: 0 };
     scene.add(m); sparks.push(m);
   }
   const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: col, transparent: true, side: THREE.DoubleSide }));
-  ring.position.set(fx.x, fx.y, 0.45); ring.userData = { v: new THREE.Vector3(), life: 14, grow: fx.big || fx.ko ? 0.4 : 0.24 };
+  ring.position.set(fx.x, fx.y, 0.45); ring.userData = { v: new THREE.Vector3(), life: 14, grow: ringGrow };
   scene.add(ring); sparks.push(ring);
+}
+function flashScreen(cls) { // 全屏一闪：完美格挡白闪、大招压暗 + 招式名
+  const el = $(cls === 'super' ? 'superfx' : 'flash');
+  el.hidden = false; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+}
+let focus = { x: 0, until: 0 }; // 大招时镜头对准放招的人
+function onFx(fx) {
+  if (fx.t === 'swing') return sfx('swing');
+  if (fx.t === 'super') {
+    const v = state.f[fx.who];
+    $('superName').textContent = fx.name; $('superfx').style.setProperty('--c', fx.col);
+    flashScreen('super'); tone(160, 960, 0.7, 0.18, 'sawtooth');
+    focus = { x: v.x, until: performance.now() + SUPER_FREEZE / 60 * 1000 };
+    if (!calm) zoom = 3;
+    return;
+  }
+  if (fx.t === 'quake') { sfx('ko'); if (!calm) shake = 0.5; return; }
+  if (fx.t === 'clash') { sfx('block'); return burstFx(fx, 0xffffff, 10, 0.3); }
+  if (fx.t === 'parry') {
+    pow(fx, 'PERFECT!', 'parry'); flashScreen('parry');
+    sfx('block'); tone(1400, 2800, 0.3, 0.22, 'triangle');
+    burstFx(fx, 0x7fd8ff, 14, 0.5);
+    if (!calm) shake = Math.max(shake, 0.12);
+    return;
+  }
+  const block = fx.t === 'block', col = block ? 0xffffff : fx.frz ? 0x9fe3ff : fx.col ? new THREE.Color(fx.col).getHex() : 0xffd60a;
+  if (block) pow(fx, 'BLOCK!', 'block');
+  else if (fx.big || fx.ko) pow(fx, fx.ko ? 'K.O.!!' : POW_WORDS[Math.random() * POW_WORDS.length | 0], 'big');
+  if (fx.dmg) dmgPop(fx);
+  sfx(block ? 'block' : fx.ko ? 'ko' : fx.big ? 'heavy' : 'hit');
+  if (!block) views[fx.who].flash = 1;
+  burstFx(fx, col, block ? 6 : fx.ko ? 24 : fx.big ? 16 : 10, fx.big || fx.ko ? 0.4 : 0.24);
   if (calm) return;
   shake = Math.max(shake, block ? 0.04 : fx.ko ? 0.4 : fx.big ? 0.22 : 0.1);
-  if (fx.big || fx.ko) zoom = fx.ko ? 2.2 : 1.0;
+  if (fx.big || fx.ko) zoom = Math.max(zoom, fx.ko ? 2.2 : 1.0);
 }
 function updateSparks() {
   for (let i = sparks.length - 1; i >= 0; i--) {
@@ -841,6 +1097,34 @@ function updateSparks() {
     m.material.opacity = --d.life / 16;
     if (d.life <= 0) { scene.remove(m); m.material.dispose(); sparks.splice(i, 1); }
   }
+}
+
+// 飞行道具：按 state.proj 的 id 建/删网格，形状由招式的 proj.shape 决定，外面套一层黑描边
+const projViews = new Map();
+function makeProj(q, col) {
+  const r = q.h * 0.65, geo = q.shape === 'ring' ? new THREE.TorusGeometry(r * 0.8, r * 0.22, 10, 28)
+    : q.shape === 'wave' ? new THREE.SphereGeometry(r * 1.6, 20, 8, 0, Math.PI * 2, 0, Math.PI / 2)
+    : q.shape === 'ice' ? new THREE.IcosahedronGeometry(r, 0)
+    : new THREE.SphereGeometry(r, 24, 16);
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: q.shape === 'ice' ? 0xbfefff : col }));
+  const hull = new THREE.Mesh(geo, OUTLINE_BOX); hull.scale.setScalar(1.12); m.add(hull);
+  if (q.shape === 'ring') m.rotation.y = 1.0; // 斜一点，正对镜头会看成一条线
+  if (q.shape === 'wave') m.scale.set(0.6, 0.5, 1);
+  if (q.shape === 'beam') m.scale.x = 1.6;
+  return m;
+}
+function drawProj(s, dt) {
+  const live = new Set();
+  for (const p of s?.proj ?? []) {
+    live.add(p.id);
+    const q = moveOf(s.f[p.o], p.k).proj;
+    let m = projViews.get(p.id);
+    if (!m) { m = makeProj(q, CHARS[s.chars[p.o]].col); scene.add(m); projViews.set(p.id, m); }
+    m.position.set(p.x, p.y + (q.shape === 'wave' ? 0 : q.h / 2), 0);
+    if (q.shape === 'ice') m.rotation.z -= p.dir * dt * 10;
+    if (q.shape === 'ring') m.scale.setScalar(1 + Math.sin(p.t * 0.5) * 0.12);
+  }
+  for (const [id, m] of projViews) if (!live.has(id)) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); projViews.delete(id); }
 }
 
 // ============ HUD / 选人 / 主循环 ============
@@ -852,6 +1136,7 @@ $('cards').innerHTML = CHARS.map((c, i) => `
   <div class="card" id="card${i}">
     <img src="${c.img ?? faces[i].toDataURL()}" alt="${c.name}的头像">
     <h2>${c.name}</h2><p>${c.tag}</p>
+    <dl class="mv"><dt>↓↘→J</dt><dd>${c.moves.s1.name}</dd><dt>←→K</dt><dd>${c.moves.s2.name}</dd><dt>J+K</dt><dd class="su">${c.moves.su.name}</dd></dl>
     <div class="stat">速度<span><i style="width:${c.speed * 70}%"></i></span></div>
     <div class="stat">力量<span><i style="width:${c.power * 70}%"></i></span></div>
     <div class="picks"><button class="pick1" data-p="0" data-c="${i}">1P</button><button class="pick2" data-p="1" data-c="${i}">2P</button></div>
@@ -890,13 +1175,13 @@ async function startMatch() {
       return;
     }
   }
-  views.forEach(disposeView);
+  views.forEach(disposeView); drawProj(null);
   views = pick.map(p => buildFighter(p, assets));
   views.forEach(v => scene.add(v.root));
   renderer.compile(scene, camera); // 着色器提前编译，免得开打第一拳卡一下
   perfMs = 0; perfN = -90;
   cpuOn = $('cpu').checked;
-  Object.assign(ai, { t: 0, k: 0 });
+  Object.assign(ai, { t: 0, k: 0, seq: [] });
   state = newMatch(pick.slice()); prevPos = null;
   $('n0').innerHTML = `1P ${CHARS[pick[0]].name}`;
   $('n1').innerHTML = `${cpuOn ? '<small>CPU</small>' : ''}${CHARS[pick[1]].name} 2P`;
@@ -904,7 +1189,7 @@ async function startMatch() {
   document.activeElement?.blur();
 }
 function backToSelect() {
-  state = null;
+  state = null; drawProj(null);
   $('select').hidden = false; $('hud').hidden = $('hint').hidden = $('pad').hidden = true;
   $('bannerMain').textContent = $('bannerSub').textContent = '';
 }
@@ -916,7 +1201,10 @@ function hud(s) {
     if ($('hp' + i).style.transform !== hpT) $('hp' + i).style.transform = $('lag' + i).style.transform = hpT;
     [...$('w' + i).children].forEach((b, k) => b.classList.toggle('on', s.wins[i] > k));
     const o = s.f[1 - i];
-    setText('c' + i, (o.act === 'hit' || o.act === 'ko') && o.combo >= 2 ? `${o.combo} HITS!` : '');
+    setText('c' + i, (o.act === 'hit' || o.act === 'ko') && o.combo >= 2 ? `${o.combo} HITS! ${o.comboDmg}` : '');
+    const meT = `scaleX(${f.meter / METER})`;
+    if ($('me' + i).style.transform !== meT) $('me' + i).style.transform = meT;
+    $('me' + i).parentNode.classList.toggle('full', f.meter >= METER);
   });
   setText('timer', String(Math.ceil(s.timer / 60)));
   let main = '', sub = '';
@@ -968,13 +1256,14 @@ function frame(now) {
     hud(state);
     for (const b of padBtns) { // 键盘按下时侧边按钮也跟着亮
       const bit = +b.dataset.bit;
-      b.toggleAttribute('data-on', bit ? !!(inp1 & bit) : padGuard || state.f[0].act === 'block');
+      b.toggleAttribute('data-on', bit ? (inp1 & bit) === bit : padGuard || state.f[0].act === 'block');
     }
     const [a, b] = state.f, dx = Math.abs(a.x - b.x);
-    camTarget.x += ((a.x + b.x) / 2 * 0.8 - camTarget.x) * (1 - Math.exp(-6 * dt));
+    const cx = now < focus.until ? focus.x : (a.x + b.x) / 2 * 0.8;
+    camTarget.x += (cx - camTarget.x) * (1 - Math.exp(-6 * dt));
     camera.position.z += (Math.min(14, Math.max(10.5, 8 + dx * 0.7)) - zoom - camera.position.z) * (1 - Math.exp(-8 * dt));
   }
-  updateSparks();
+  updateSparks(); drawProj(state, dt);
   camera.position.x = camTarget.x + Math.sin(now * 0.13) * shake;
   camera.position.y = 2.2 + Math.cos(now * 0.11) * shake * 0.6;
   camera.lookAt(camTarget.x, 1.1, 0);
